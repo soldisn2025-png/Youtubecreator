@@ -1,7 +1,9 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUserId } from "@/lib/server/auth";
-import { ensureBossStarted } from "@/services/jobs";
+import { runFullGeneration } from "@/services/generation";
+
+export const maxDuration = 300;
 
 export async function POST(
   _request: Request,
@@ -24,17 +26,19 @@ export async function POST(
       },
     });
 
-    const boss = await ensureBossStarted();
-    await boss.send("full-generation", { jobId: job.id, projectId, userId });
-
     await prisma.project.update({
       where: { id: projectId },
       data: { status: "generating" },
     });
 
+    after(async () => {
+      await runFullGeneration(job.id, projectId, userId);
+    });
+
     return NextResponse.json({ job });
   } catch (error) {
     if (error instanceof Response) return error;
+    console.error("Generate route error:", error);
     return NextResponse.json({ error: "Generation could not be started." }, { status: 500 });
   }
 }
