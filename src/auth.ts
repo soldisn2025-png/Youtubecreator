@@ -1,47 +1,36 @@
-import { PrismaAdapter } from "@next-auth/prisma-adapter";
+import CredentialsProvider from "next-auth/providers/credentials";
 import type { NextAuthOptions } from "next-auth";
-import GoogleProvider from "next-auth/providers/google";
-import EmailProvider from "next-auth/providers/email";
 import { prisma } from "@/lib/prisma";
 
-const providers: NextAuthOptions["providers"] = [];
-
-if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
-  providers.push(
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      authorization: {
-        params: {
-          scope:
-            "openid email profile https://www.googleapis.com/auth/youtube.upload",
-          access_type: "offline",
-          prompt: "consent",
-        },
+export const authOptions: NextAuthOptions = {
+  secret: process.env.NEXTAUTH_SECRET,
+  session: { strategy: "jwt" },
+  providers: [
+    CredentialsProvider({
+      name: "Sign in",
+      credentials: {
+        password: { label: "Password", type: "password", placeholder: "Enter your password" },
+      },
+      async authorize(credentials) {
+        if (!credentials?.password || credentials.password !== process.env.ADMIN_PASSWORD) {
+          return null;
+        }
+        const email = process.env.ADMIN_EMAIL ?? "admin@localhost";
+        let user = await prisma.user.findUnique({ where: { email } });
+        if (!user) {
+          user = await prisma.user.create({ data: { email, name: "Admin" } });
+        }
+        return { id: user.id, email: user.email, name: user.name };
       },
     }),
-  );
-}
-
-if (process.env.EMAIL_SERVER && process.env.EMAIL_FROM) {
-  providers.push(
-    EmailProvider({
-      server: process.env.EMAIL_SERVER,
-      from: process.env.EMAIL_FROM,
-    }),
-  );
-}
-
-export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma),
-  secret: process.env.NEXTAUTH_SECRET,
-  providers,
-  session: { strategy: "database" },
+  ],
   callbacks: {
-    session({ session, user }) {
-      if (session.user) {
-        session.user.id = user.id;
-      }
+    jwt({ token, user }) {
+      if (user) token.id = user.id;
+      return token;
+    },
+    session({ session, token }) {
+      if (session.user) session.user.id = token.id as string;
       return session;
     },
   },
