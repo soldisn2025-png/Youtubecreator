@@ -37,9 +37,6 @@ export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
   providers,
   session: { strategy: "database" },
-  pages: {
-    signIn: "/",
-  },
   callbacks: {
     session({ session, user }) {
       if (session.user) {
