@@ -34,6 +34,7 @@ if (process.env.EMAIL_SERVER && process.env.EMAIL_FROM) {
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
+  secret: process.env.NEXTAUTH_SECRET,
   providers,
   session: { strategy: "database" },
   pages: {
