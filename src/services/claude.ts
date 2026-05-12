@@ -72,10 +72,11 @@ Return JSON matching this shape:
     ],
   });
 
-  const text = message.content
+  const raw = message.content
     .map((part) => (part.type === "text" ? part.text : ""))
     .join("")
     .trim();
+  const text = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "");
   const parsed = JSON.parse(text);
   return generatedPlanSchema.parse(parsed);
 }
