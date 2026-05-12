@@ -1,0 +1,246 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f6f7f2;
+  --foreground: #17201b;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  letter-spacing: 0;
+}
+
+.panel {
+  border: 1px solid #d9ddd1;
+  background: rgba(255, 255, 255, 0.82);
+  padding: 18px;
+  box-shadow: 0 10px 28px rgba(23, 32, 27, 0.06);
+}
+
+.panel-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #17201b;
+}
+
+.muted {
+  color: #59645d;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.button-primary,
+.button-secondary {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.button-primary {
+  background: #e65f3c;
+  color: #fffaf4;
+}
+
+.button-secondary {
+  border-color: #b8c5bb;
+  background: #ffffff;
+  color: #1f352e;
+}
+
+.field-label {
+  margin-top: 14px;
+  margin-bottom: 6px;
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  color: #31423a;
+}
+
+.field {
+  width: 100%;
+  border: 1px solid #cbd4cc;
+  background: #fffefb;
+  padding: 11px 12px;
+  font-size: 14px;
+  outline: none;
+}
+
+.field:focus {
+  border-color: #3f6f65;
+  box-shadow: 0 0 0 3px rgba(63, 111, 101, 0.14);
+}
+
+.upload-tile {
+  display: flex;
+  min-height: 82px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px dashed #94a79c;
+  background: #f8faf5;
+  color: #31423a;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.upload-icon {
+  display: grid;
+  height: 28px;
+  width: 28px;
+  place-items: center;
+  background: #3f6f65;
+  color: white;
+  font-size: 20px;
+  line-height: 1;
+}
+
+.segmented {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border: 1px solid #cbd4cc;
+  background: #eef2ea;
+  padding: 3px;
+}
+
+.segmented button {
+  min-height: 38px;
+  font-weight: 700;
+  color: #31423a;
+}
+
+.segment-active {
+  background: #ffffff;
+  box-shadow: 0 2px 10px rgba(23, 32, 27, 0.08);
+}
+
+.pill-good,
+.pill-warn {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid;
+  padding: 5px 8px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.pill-good {
+  border-color: #a7c9b8;
+  background: #e7f5ec;
+  color: #1f5a3c;
+}
+
+.pill-warn {
+  border-color: #ecc38c;
+  background: #fff2dc;
+  color: #865415;
+}
+
+.step {
+  display: flex;
+  min-height: 70px;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid #d9ddd1;
+  background: #fbfcf7;
+  padding: 12px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #31423a;
+}
+
+.step span {
+  display: grid;
+  height: 28px;
+  width: 28px;
+  place-items: center;
+  background: #273f37;
+  color: #fff;
+}
+
+.scene-card {
+  display: flex;
+  gap: 14px;
+  border: 1px solid #d9ddd1;
+  background: #ffffff;
+  padding: 12px;
+}
+
+.scene-fixed {
+  background: #f8faf5;
+}
+
+.scene-thumb {
+  display: grid;
+  aspect-ratio: 16 / 9;
+  width: 118px;
+  flex: 0 0 auto;
+  place-items: center;
+  background: linear-gradient(135deg, #273f37, #5f857b);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.scene-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.scene-heading h3 {
+  overflow-wrap: anywhere;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.caption-line {
+  margin-top: 7px;
+  color: #3d4942;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.scene-actions {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: #59645d;
+  font-size: 13px;
+}
+
+.scene-actions button {
+  border: 1px solid #cbd4cc;
+  background: #f8faf5;
+  padding: 6px 9px;
+  font-weight: 700;
+  color: #31423a;
+}

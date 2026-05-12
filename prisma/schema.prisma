@@ -1,0 +1,305 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum ProjectStatus {
+  draft
+  generating
+  ready_for_review
+  rendering
+  approved
+  exported
+  uploaded_private
+  failed
+}
+
+enum AssetType {
+  photo
+  clip
+  intro_image
+  outro_image
+}
+
+enum AssetValidationStatus {
+  pending
+  valid
+  rejected
+}
+
+enum JobType {
+  full_generation
+  scene_regeneration
+  draft_render
+  final_render
+  youtube_upload
+}
+
+enum JobStatus {
+  queued
+  running
+  complete
+  failed
+}
+
+enum SceneStatus {
+  idle
+  tts_pending
+  rendering
+  ready
+  locked
+  error
+  approved
+}
+
+enum RenderType {
+  draft
+  final
+}
+
+enum UploadStatus {
+  queued
+  uploading
+  uploaded
+  failed
+}
+
+model User {
+  id             String              @id @default(cuid())
+  name           String?
+  email          String?             @unique
+  emailVerified  DateTime?
+  image          String?
+  accounts       Account[]
+  sessions       Session[]
+  projects       Project[]
+  assets         Asset[]
+  youtubeAccount YoutubeConnection?
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Project {
+  id                    String        @id @default(cuid())
+  userId                String
+  title                 String
+  topic                 String
+  audience              String
+  tone                  String
+  targetLengthMin       Int           @default(3)
+  callToAction          String
+  ttsVoice              String        @default("nova")
+  status                ProjectStatus @default(draft)
+  outline               String        @db.Text
+  introAssetId          String?
+  outroAssetId          String?
+  finalApprovedAt       DateTime?
+  finalApprovedByUserId String?
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+  user                  User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assets                Asset[]
+  jobs                  GenerationJob[]
+  scripts               GeneratedScript[]
+  scenes                Scene[]
+  renderJobs            RenderJob[]
+  exports               ExportPackage[]
+  youtubeUploads        YoutubeUpload[]
+
+  @@index([userId, status])
+}
+
+model Asset {
+  id               String                @id @default(cuid())
+  projectId        String
+  userId           String
+  type             AssetType
+  originalFilename String
+  r2Key            String
+  durationSec      Float?
+  fileSizeBytes    Int
+  mimeType         String
+  validationStatus AssetValidationStatus @default(pending)
+  validationError  String?
+  uploadedAt       DateTime              @default(now())
+  project          Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user             User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scenes           Scene[]
+
+  @@index([projectId, type])
+}
+
+model YoutubeResearch {
+  id        String   @id @default(cuid())
+  keyword   String   @unique
+  fetchedAt DateTime @default(now())
+  expiresAt DateTime
+  results   Json
+}
+
+model GenerationJob {
+  id                     String      @id @default(cuid())
+  projectId              String
+  type                   JobType
+  sceneId                String?
+  status                 JobStatus   @default(queued)
+  progressPct            Int         @default(0)
+  currentStep            String?
+  errorMessage           String?
+  retryCount             Int         @default(0)
+  createdAt              DateTime    @default(now())
+  completedAt            DateTime?
+  claudePromptTokens     Int?
+  claudeCompletionTokens Int?
+  ttsCharactersBilled    Int?
+  project                Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, status])
+}
+
+model GeneratedScript {
+  id                   String   @id @default(cuid())
+  projectId            String
+  generationJobId      String?
+  hookOptions          Json
+  fullNarrationText    String   @db.Text
+  missingAssetsAdvice  Json
+  sensitivityWarnings  Json
+  titleOptions         Json
+  descriptionDraft     String   @db.Text
+  hashtags             Json
+  version              Int      @default(1)
+  createdAt            DateTime @default(now())
+  project              Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  scenes               Scene[]
+
+  @@index([projectId, version])
+}
+
+model Scene {
+  id                  String          @id @default(cuid())
+  projectId           String
+  scriptId            String?
+  orderIndex          Int
+  sceneTitle          String
+  assetId             String?
+  narrationText       String          @db.Text
+  captionText         String          @db.Text
+  ttsAudioR2Key       String?
+  ttsAudioDurationSec Float?
+  renderedClipR2Key   String?
+  status              SceneStatus     @default(idle)
+  generationId        String
+  approvedAt          DateTime?
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+  project             Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  script              GeneratedScript? @relation(fields: [scriptId], references: [id], onDelete: SetNull)
+  asset               Asset?          @relation(fields: [assetId], references: [id], onDelete: SetNull)
+  revisions           SceneRevision[]
+
+  @@index([projectId, orderIndex])
+}
+
+model SceneRevision {
+  id            String   @id @default(cuid())
+  sceneId       String
+  narrationText String   @db.Text
+  captionText   String   @db.Text
+  createdAt     DateTime @default(now())
+  scene         Scene    @relation(fields: [sceneId], references: [id], onDelete: Cascade)
+}
+
+model RenderJob {
+  id           String     @id @default(cuid())
+  projectId    String
+  type         RenderType
+  status       JobStatus  @default(queued)
+  outputR2Key  String?
+  errorMessage String?
+  durationSec  Float?
+  createdAt    DateTime   @default(now())
+  completedAt  DateTime?
+  project      Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  exports      ExportPackage[]
+
+  @@index([projectId, status])
+}
+
+model ExportPackage {
+  id                      String          @id @default(cuid())
+  projectId               String
+  renderJobId             String
+  approvedByUserId        String
+  approvedAt              DateTime
+  titleOptions            Json
+  descriptionText         String          @db.Text
+  hashtags                Json
+  scriptText              String          @db.Text
+  missingAssetsChecklist  Json
+  zipR2Key                String?
+  createdAt               DateTime        @default(now())
+  project                 Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  renderJob               RenderJob       @relation(fields: [renderJobId], references: [id], onDelete: Cascade)
+  youtubeUploads          YoutubeUpload[]
+}
+
+model YoutubeConnection {
+  id                    String    @id @default(cuid())
+  userId                String    @unique
+  encryptedRefreshToken String    @db.Text
+  channelId             String
+  connectedAt           DateTime  @default(now())
+  revokedAt             DateTime?
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model YoutubeUpload {
+  id             String        @id @default(cuid())
+  projectId      String
+  exportId       String
+  youtubeVideoId String?
+  privacyStatus  String        @default("private")
+  uploadStatus   UploadStatus  @default(queued)
+  errorMessage   String?
+  uploadedAt     DateTime?
+  createdAt      DateTime      @default(now())
+  project        Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  exportPackage  ExportPackage @relation(fields: [exportId], references: [id], onDelete: Cascade)
+}
