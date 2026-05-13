@@ -19,6 +19,7 @@ export default async function ProjectPage({
       jobs: { orderBy: { createdAt: "desc" }, take: 1 },
       scripts: { orderBy: { version: "desc" }, take: 1 },
       exports: { orderBy: { createdAt: "desc" }, take: 1 },
+      renderJobs: { orderBy: { createdAt: "desc" }, take: 1 },
     },
   });
 

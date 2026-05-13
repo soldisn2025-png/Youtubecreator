@@ -17,6 +17,7 @@ export async function GET(
         jobs: { orderBy: { createdAt: "desc" }, take: 1 },
         scripts: { orderBy: { version: "desc" }, take: 1 },
         exports: { orderBy: { createdAt: "desc" }, take: 1 },
+        renderJobs: { orderBy: { createdAt: "desc" }, take: 1 },
       },
     });
     if (!project) return NextResponse.json({ error: "Project not found." }, { status: 404 });

@@ -87,14 +87,12 @@ export async function startRender(projectId: string, userId: string): Promise<st
     functionName: FUNCTION_NAME,
     serveUrl: SERVE_URL,
     composition: "YoutubeVideo",
-    inputProps: videoProps,
+    inputProps: videoProps as unknown as Record<string, unknown>,
     codec: "h264",
     imageFormat: "jpeg",
     maxRetries: 1,
     privacy: "private",
     downloadBehavior: { type: "download", fileName: "video.mp4" },
-    awsProfile: undefined,
-    overrideWebhookSecret: undefined,
     outName: `${projectId}-output.mp4`,
     timeoutInMilliseconds: 300000,
   });
@@ -144,15 +142,11 @@ export async function pollRender(renderJobId: string): Promise<{
   }
 
   if (progress.done && progress.outputFile) {
-    // Download from S3 and store in R2
-    const outputKey = `${renderJob.projectId}/renders/${renderJobId}.mp4`;
-    // Store just the key — the file lives in Remotion's S3 bucket
-    // We'll serve it via a redirect or direct S3 URL
     await prisma.renderJob.update({
       where: { id: renderJobId },
       data: {
         status: "complete",
-        outputR2Key: progress.outputFile,
+        outputR2Key: progress.outputFile, // raw S3 URL from Lambda
         completedAt: new Date(),
         progressPct: 100,
       },
@@ -161,7 +155,8 @@ export async function pollRender(renderJobId: string): Promise<{
       where: { id: renderJob.projectId },
       data: { status: "approved" },
     });
-    return { done: true, progress: 100, outputUrl: progress.outputFile };
+    // Return our own download endpoint — the raw S3 URL is private
+    return { done: true, progress: 100, outputUrl: `/api/render-jobs/${renderJobId}/download` };
   }
 
   const pct = Math.round((progress.overallProgress ?? 0) * 100);

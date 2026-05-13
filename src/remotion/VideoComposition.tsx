@@ -6,7 +6,8 @@ import type { VideoProps } from "./types";
 const DEFAULT_SCENE_DURATION_SEC = 8;
 const TITLE_DURATION_SEC = 3;
 
-export function VideoComposition({ scenes, introImageUrl, outroImageUrl, projectTitle, fps }: VideoProps) {
+export function VideoComposition(props: VideoProps) {
+  const { scenes, introImageUrl, outroImageUrl, projectTitle, fps } = props;
   const introDurationFrames = TITLE_DURATION_SEC * fps;
   const outroDurationFrames = TITLE_DURATION_SEC * fps;
 
@@ -49,7 +50,8 @@ export function RemotionRoot() {
   return (
     <Composition
       id="YoutubeVideo"
-      component={VideoComposition}
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      component={VideoComposition as any}
       fps={30}
       width={1920}
       height={1080}
@@ -61,12 +63,13 @@ export function RemotionRoot() {
         projectTitle: "My Video",
         fps: 30,
       }}
-      calculateMetadata={({ props }) => ({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      calculateMetadata={(({ props }: any) => ({
         durationInFrames: getTotalFrames({ ...props, fps: 30 }),
         fps: 30,
         width: 1920,
         height: 1080,
-      })}
+      })) as any}
     />
   );
 }

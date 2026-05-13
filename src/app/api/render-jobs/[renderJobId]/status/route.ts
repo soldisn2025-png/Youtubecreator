@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { pollRender } from "@/services/render";
 
+export const maxDuration = 300;
+
 export async function GET(
   _request: Request,
   context: { params: Promise<{ renderJobId: string }> },

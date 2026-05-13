@@ -19,6 +19,7 @@ interface Scene {
 }
 interface Job { id: string; status: string; currentStep: string | null; progressPct: number; }
 interface ExportPkg { id: string; zipR2Key: string | null; }
+interface RenderJob { id: string; status: string; progressPct: number; outputR2Key: string | null; }
 interface Project {
   id: string;
   title: string;
@@ -36,6 +37,7 @@ interface Project {
   assets: Asset[];
   jobs: Job[];
   exports: ExportPkg[];
+  renderJobs: RenderJob[];
 }
 
 const STEPS = ["Upload notes", "Add media", "Create draft", "Review scenes", "Export"];
@@ -67,10 +69,15 @@ export default function ProjectEditor({ initialProject }: { initialProject: Proj
   const [generating, setGenerating] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState("");
-  const [renderJobId, setRenderJobId] = useState<string | null>(null);
+  const latestRender = project.renderJobs?.[0] ?? null;
+  const [renderJobId, setRenderJobId] = useState<string | null>(
+    latestRender && ["queued", "running"].includes(latestRender.status) ? latestRender.id : null
+  );
   const [rendering, setRendering] = useState(false);
   const [renderError, setRenderError] = useState("");
-  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [videoUrl, setVideoUrl] = useState<string | null>(
+    latestRender?.status === "complete" ? `/api/render-jobs/${latestRender.id}/download` : null
+  );
 
   const assetCountByType = (type: string) =>
     project.assets.filter((a) => a.type === type).length;

@@ -33,7 +33,8 @@ export async function POST(
     return NextResponse.json({ renderJobId });
   } catch (error) {
     if (error instanceof Response) return error;
-    console.error("Render route error:", error);
-    return NextResponse.json({ error: "Render could not be started." }, { status: 500 });
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error("Render route error:", msg);
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
