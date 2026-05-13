@@ -345,17 +345,18 @@ export default function ProjectEditor({ initialProject }: { initialProject: Proj
                 )}
               </div>
               <div className="panel">
-                <h2 className="panel-title">Private YouTube upload</h2>
+                <h2 className="panel-title">Upload to YouTube</h2>
                 <p className="muted mt-1">
-                  Optional. Uploads as private only after final approval so you can publish manually in YouTube Studio.
+                  Download the ZIP, open YouTube Studio, create a new video, and paste in the script, description, and hashtags from the ZIP files.
                 </p>
-                <button
-                  className="button-secondary mt-4"
-                  disabled={project.exports.length === 0}
-                  title={project.exports.length === 0 ? "Export first" : ""}
+                <a
+                  href="https://studio.youtube.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="button-secondary mt-4 text-sm inline-flex"
                 >
-                  {project.exports.length === 0 ? "Locked until approved" : "Upload to YouTube"}
-                </button>
+                  Open YouTube Studio ↗
+                </a>
               </div>
             </div>
 
