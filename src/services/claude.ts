@@ -33,7 +33,7 @@ export async function generateVideoPlan(input: {
   const client = new Anthropic({ apiKey: requiredEnv("ANTHROPIC_API_KEY") });
   const message = await client.messages.create({
     model: appConfig.anthropicModel,
-    max_tokens: 6000,
+    max_tokens: 4000,
     system:
       "You are a careful educational video producer for autism and ABA content. Write parent-friendly, non-diagnostic, non-medical content. Return strict JSON only.",
     messages: [

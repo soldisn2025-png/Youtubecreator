@@ -17,6 +17,12 @@ export async function POST(
       return NextResponse.json({ error: "Project not found." }, { status: 404 });
     }
 
+    // Mark any stale in-progress jobs as failed before starting fresh
+    await prisma.generationJob.updateMany({
+      where: { projectId, status: { in: ["queued", "running"] } },
+      data: { status: "failed", errorMessage: "Superseded by new generation request." },
+    });
+
     const job = await prisma.generationJob.create({
       data: {
         projectId,
