@@ -91,7 +91,7 @@ export async function startRender(projectId: string, userId: string): Promise<st
     codec: "h264",
     imageFormat: "jpeg",
     maxRetries: 2,
-    framesPerLambda: 500,
+    framesPerLambda: 9999,
     privacy: "private",
     downloadBehavior: { type: "download", fileName: "video.mp4" },
     outName: `${projectId}-output.mp4`,
