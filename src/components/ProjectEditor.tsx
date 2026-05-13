@@ -5,6 +5,7 @@ import Link from "next/link";
 import UploadTile from "./UploadTile";
 import SceneCard from "./SceneCard";
 import GenerationPoller from "./GenerationPoller";
+import RenderPoller from "./RenderPoller";
 
 interface Asset { id: string; type: string; }
 interface Scene {
@@ -66,6 +67,10 @@ export default function ProjectEditor({ initialProject }: { initialProject: Proj
   const [generating, setGenerating] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState("");
+  const [renderJobId, setRenderJobId] = useState<string | null>(null);
+  const [rendering, setRendering] = useState(false);
+  const [renderError, setRenderError] = useState("");
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
 
   const assetCountByType = (type: string) =>
     project.assets.filter((a) => a.type === type).length;
@@ -137,6 +142,29 @@ export default function ProjectEditor({ initialProject }: { initialProject: Proj
     }
   }
 
+  async function startRender() {
+    setRenderError("");
+    setRendering(true);
+    try {
+      const res = await fetch(`/api/projects/${project.id}/render`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) { setRenderError(data.error ?? "Render failed to start."); return; }
+      setRenderJobId(data.renderJobId);
+    } finally {
+      setRendering(false);
+    }
+  }
+
+  const onRenderComplete = useCallback((url: string) => {
+    setRenderJobId(null);
+    setVideoUrl(url);
+  }, []);
+
+  const onRenderFailed = useCallback((msg: string) => {
+    setRenderJobId(null);
+    setRenderError(msg);
+  }, []);
+
   const activeStep = STEP_FOR_STATUS[project.status] ?? 2;
   const isLocked = !["draft", "failed"].includes(project.status);
 
@@ -158,6 +186,11 @@ export default function ProjectEditor({ initialProject }: { initialProject: Proj
             {!isLocked && (
               <button className="button-primary" onClick={startGeneration} disabled={generating || !!generatingJobId}>
                 {generating ? "Writing script… (20–40s)" : generatingJobId ? "Generating…" : "Create draft"}
+              </button>
+            )}
+            {allScenesApproved && !renderJobId && (
+              <button className="button-primary" onClick={startRender} disabled={rendering}>
+                {rendering ? "Starting render…" : "Render video"}
               </button>
             )}
           </div>
@@ -311,6 +344,32 @@ export default function ProjectEditor({ initialProject }: { initialProject: Proj
               <div className="panel text-center py-12">
                 <p className="font-bold text-[#17201b]">No scenes yet</p>
                 <p className="muted mt-1">Click "Create draft" to generate your script and scenes.</p>
+              </div>
+            )}
+
+            {/* Render panel */}
+            {renderJobId && !rendering && (
+              <RenderPoller
+                renderJobId={renderJobId}
+                onComplete={onRenderComplete}
+                onFailed={onRenderFailed}
+              />
+            )}
+
+            {renderError && (
+              <div className="panel border-red-300 bg-red-50">
+                <p className="text-sm font-semibold text-red-700">{renderError}</p>
+                <button className="button-primary mt-3 text-sm" onClick={startRender}>Try again</button>
+              </div>
+            )}
+
+            {videoUrl && (
+              <div className="panel">
+                <h2 className="panel-title">Video ready</h2>
+                <p className="muted mt-1">Your video has been rendered. Download it below.</p>
+                <a href={videoUrl} download className="button-primary mt-4 text-sm inline-flex">
+                  Download MP4
+                </a>
               </div>
             )}
 
