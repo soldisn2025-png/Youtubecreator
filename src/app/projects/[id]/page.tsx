@@ -1,7 +1,6 @@
-import { getServerSession } from "next-auth";
-import { redirect, notFound } from "next/navigation";
-import { authOptions } from "@/auth";
+import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { requireUserId } from "@/lib/server/auth";
 import ProjectEditor from "@/components/ProjectEditor";
 
 export default async function ProjectPage({
@@ -9,12 +8,11 @@ export default async function ProjectPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) redirect("/api/auth/signin");
-
+  const userId = await requireUserId();
   const { id } = await params;
+
   const project = await prisma.project.findFirst({
-    where: { id, userId: session.user.id! },
+    where: { id, userId },
     include: {
       scenes: { orderBy: { orderIndex: "asc" } },
       assets: true,

@@ -155,7 +155,6 @@ export default function ProjectEditor({ initialProject }: { initialProject: Proj
             </h1>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Link href="/api/auth/signout" className="button-secondary text-sm">Sign out</Link>
             {!isLocked && (
               <button className="button-primary" onClick={startGeneration} disabled={generating || !!generatingJobId}>
                 {generating ? "Writing script… (20–40s)" : generatingJobId ? "Generating…" : "Create draft"}

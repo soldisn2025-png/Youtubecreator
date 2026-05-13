@@ -1,8 +1,6 @@
-import { getServerSession } from "next-auth";
-import { redirect } from "next/navigation";
 import Link from "next/link";
-import { authOptions } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { requireUserId } from "@/lib/server/auth";
 import NewProjectForm from "@/components/NewProjectForm";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -28,14 +26,10 @@ const STATUS_PILL: Record<string, string> = {
 };
 
 export default async function HomePage() {
-  const session = await getServerSession(authOptions);
-
-  if (!session?.user) {
-    redirect("/api/auth/signin");
-  }
+  const userId = await requireUserId();
 
   const projects = await prisma.project.findMany({
-    where: { userId: session.user.id! },
+    where: { userId },
     orderBy: { updatedAt: "desc" },
   });
 
@@ -48,12 +42,6 @@ export default async function HomePage() {
               YouTube Creator
             </p>
             <h1 className="mt-1 text-3xl font-semibold text-[#17201b]">Your projects</h1>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-[#59645d]">{session.user.email}</span>
-            <Link href="/api/auth/signout" className="button-secondary text-sm">
-              Sign out
-            </Link>
           </div>
         </header>
 
