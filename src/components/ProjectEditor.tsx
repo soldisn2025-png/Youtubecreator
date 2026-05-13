@@ -323,7 +323,16 @@ export default function ProjectEditor({ initialProject }: { initialProject: Proj
                 </p>
                 {exportError && <p className="mt-2 text-sm font-semibold text-red-600">{exportError}</p>}
                 {project.exports.length > 0 ? (
-                  <p className="mt-3 text-sm font-bold text-[#1f5a3c]">Export complete ✓</p>
+                  <div className="mt-3 space-y-2">
+                    <p className="text-sm font-bold text-[#1f5a3c]">Export complete ✓</p>
+                    <a
+                      href={`/api/projects/${project.id}/exports/${project.exports[0].id}/download`}
+                      className="button-secondary text-sm inline-flex"
+                      download
+                    >
+                      Download ZIP
+                    </a>
+                  </div>
                 ) : (
                   <button
                     className="button-primary mt-4"
