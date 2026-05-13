@@ -67,8 +67,22 @@ export async function startRender(projectId: string, userId: string): Promise<st
         imageUrl = assetUrl;
       }
     } else {
-      // No uploaded media — try Pexels stock footage
-      videoUrl = await findPexelsVideo(scene.sceneTitle);
+      // No uploaded media — fetch Pexels stock footage and cache in R2
+      // (Lambda can't reliably reach Pexels CDN directly, so we proxy through R2)
+      const stockKey = `${userId}/${projectId}/stock/${scene.id}.mp4`;
+      const pexelsUrl = await findPexelsVideo(scene.sceneTitle);
+      if (pexelsUrl) {
+        try {
+          const resp = await fetch(pexelsUrl);
+          if (resp.ok) {
+            const buf = Buffer.from(await resp.arrayBuffer());
+            await uploadObject({ key: stockKey, body: buf, contentType: "video/mp4" });
+            videoUrl = `${baseUrl}/${stockKey}`;
+          }
+        } catch {
+          // Pexels download failed — scene will use gradient background
+        }
+      }
     }
 
     sceneInputs.push({

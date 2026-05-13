@@ -18,13 +18,15 @@ export async function findPexelsVideo(query: string): Promise<string | null> {
     const video = data.videos?.[0];
     if (!video) return null;
 
-    // Prefer HD landscape MP4, fall back to any MP4
-    const mp4Files = video.video_files.filter((f) => f.file_type === "video/mp4");
-    const hd = mp4Files
-      .filter((f) => f.width >= 1280 && f.height <= f.width)
-      .sort((a, b) => b.width - a.width)[0];
+    // Prefer medium quality (854–1280px wide) to keep file size manageable for download
+    const mp4Files = video.video_files.filter(
+      (f) => f.file_type === "video/mp4" && f.width >= f.height, // landscape only
+    );
+    const medium = mp4Files
+      .filter((f) => f.width >= 854 && f.width <= 1280)
+      .sort((a, b) => a.width - b.width)[0]; // smallest that meets minimum
 
-    return hd?.link ?? mp4Files[0]?.link ?? null;
+    return medium?.link ?? mp4Files.sort((a, b) => a.width - b.width)[0]?.link ?? null;
   } catch {
     return null;
   }

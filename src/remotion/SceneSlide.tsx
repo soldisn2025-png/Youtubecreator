@@ -4,10 +4,10 @@ import type { SceneInput } from "./types";
 
 // Four Ken Burns presets — alternates per scene so consecutive scenes feel different
 const KB = [
-  { s0: 1.0, s1: 1.10, x0: 0, x1: -2, y0: 0, y1: -1.5 },
-  { s0: 1.10, s1: 1.0, x0: -2, x1: 0, y0: -1.5, y1: 0 },
-  { s0: 1.0, s1: 1.08, x0: 2, x1: -1, y0: 0, y1: -2 },
-  { s0: 1.08, s1: 1.0, x0: -1, x1: 2, y0: -2, y1: 0 },
+  { s0: 1.0,  s1: 1.20, x0: 0,  x1: -4, y0: 0,  y1: -3 },
+  { s0: 1.20, s1: 1.0,  x0: -4, x1: 0,  y0: -3, y1: 0  },
+  { s0: 1.0,  s1: 1.18, x0: 4,  x1: -2, y0: 0,  y1: -4 },
+  { s0: 1.18, s1: 1.0,  x0: -2, x1: 4,  y0: -4, y1: 0  },
 ];
 
 export function SceneSlide({ scene, index = 0 }: { scene: SceneInput; index?: number }) {
