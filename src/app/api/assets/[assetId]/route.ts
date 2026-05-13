@@ -12,7 +12,7 @@ export async function GET(
     const asset = await prisma.asset.findFirst({ where: { id: assetId, userId } });
     if (!asset) return new Response("Not found", { status: 404 });
     const buffer = await downloadObject(asset.r2Key);
-    return new Response(buffer, {
+    return new Response(new Uint8Array(buffer), {
       headers: {
         "Content-Type": asset.mimeType,
         "Cache-Control": "private, max-age=3600",
