@@ -244,3 +244,12 @@ textarea {
   font-weight: 700;
   color: #31423a;
 }
+
+@keyframes pulse-border {
+  0%, 100% { border-color: #d9ddd1; }
+  50% { border-color: #3f6f65; box-shadow: 0 0 0 3px rgba(63, 111, 101, 0.15); }
+}
+
+.scene-card--pending {
+  animation: pulse-border 1.8s ease-in-out infinite;
+}

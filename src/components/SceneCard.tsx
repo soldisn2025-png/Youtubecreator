@@ -132,8 +132,10 @@ export default function SceneCard({ scene: initial, index, projectId, onUpdated 
     }
   }
 
+  const isPending = ["tts_pending", "rendering"].includes(scene.status);
+
   return (
-    <div className="scene-card">
+    <div className={`scene-card${isPending ? " scene-card--pending" : ""}`}>
       <div className="scene-thumb">{scene.assetId ? "Media" : "Photo"}</div>
       <div className="min-w-0 flex-1">
         <div className="scene-heading">
@@ -181,7 +183,7 @@ export default function SceneCard({ scene: initial, index, projectId, onUpdated 
             </button>
             <button
               onClick={approve}
-              disabled={approving || scene.status === "approved" || scene.status !== "ready"}
+              disabled={approving || scene.status === "approved" || !["ready", "idle", "rendering", "error"].includes(scene.status)}
             >
               {approving ? "Approving…" : scene.status === "approved" ? "Approved ✓" : "Approve"}
             </button>

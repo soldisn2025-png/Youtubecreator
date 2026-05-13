@@ -58,7 +58,7 @@ const VOICE_LABELS: Record<string, string> = {
 export default function ProjectEditor({ initialProject }: { initialProject: Project }) {
   const [project, setProject] = useState(initialProject);
   const [generatingJobId, setGeneratingJobId] = useState<string | null>(
-    project.status === "generating" && project.jobs[0]?.status === "running"
+    project.status === "generating" && ["queued", "running"].includes(project.jobs[0]?.status)
       ? project.jobs[0].id
       : null
   );

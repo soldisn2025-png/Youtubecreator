@@ -58,7 +58,7 @@ export async function runFullGeneration(jobId: string, projectId: string, userId
         sceneTitle: scene.sceneTitle,
         narrationText: scene.narrationText,
         captionText: scene.captionText,
-        status: "idle",
+        status: "ready",
         generationId: crypto.randomUUID(),
       })),
     });
