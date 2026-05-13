@@ -11,7 +11,7 @@ export function optionalEnv(name: string, fallback = ""): string {
 }
 
 export const appConfig = {
-  anthropicModel: optionalEnv("ANTHROPIC_MODEL", "claude-haiku-4-5-20251001"),
+  anthropicModel: optionalEnv("ANTHROPIC_MODEL", "claude-sonnet-4-6"),
   openAiTtsModel: optionalEnv("OPENAI_TTS_MODEL", "gpt-4o-mini-tts"),
   youtubeResearchTtlDays: 7,
   maxRenderConcurrency: Number(optionalEnv("MAX_RENDER_CONCURRENCY", "1")),
