@@ -202,6 +202,7 @@ textarea {
   width: 118px;
   flex: 0 0 auto;
   place-items: center;
+  overflow: hidden;
   background: linear-gradient(135deg, #273f37, #5f857b);
   color: #fff;
   font-size: 13px;

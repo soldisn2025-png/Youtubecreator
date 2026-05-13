@@ -136,7 +136,18 @@ export default function SceneCard({ scene: initial, index, projectId, onUpdated 
 
   return (
     <div className={`scene-card${isPending ? " scene-card--pending" : ""}`}>
-      <div className="scene-thumb">{scene.assetId ? "Media" : "Photo"}</div>
+      <div className="scene-thumb">
+        {scene.assetId ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={`/api/assets/${scene.assetId}`}
+            alt={scene.sceneTitle}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <span className="text-xs text-white/70">No media</span>
+        )}
+      </div>
       <div className="min-w-0 flex-1">
         <div className="scene-heading">
           <h3>{index + 1}. {scene.sceneTitle}</h3>
