@@ -17,19 +17,11 @@ export async function POST(
       include: {
         scenes: { orderBy: { orderIndex: "asc" } },
         scripts: { orderBy: { version: "desc" }, take: 1 },
-        renderJobs: { where: { status: "complete" }, orderBy: { completedAt: "desc" }, take: 1 },
       },
     });
     if (!project) return NextResponse.json({ error: "Project not found." }, { status: 404 });
-    if (!project.introAssetId || !project.outroAssetId) {
-      return NextResponse.json({ error: "Upload intro and outro images before exporting." }, { status: 409 });
-    }
     if (project.scenes.some((scene) => scene.status !== "approved")) {
       return NextResponse.json({ error: "Approve all scenes before exporting." }, { status: 409 });
-    }
-    const render = project.renderJobs[0];
-    if (!render) {
-      return NextResponse.json({ error: "Render the final video before exporting." }, { status: 409 });
     }
     const script = project.scripts[0];
     const chapters = formatChapters(
@@ -57,7 +49,6 @@ export async function POST(
     const exportPackage = await prisma.exportPackage.create({
       data: {
         projectId,
-        renderJobId: render.id,
         approvedByUserId: userId,
         approvedAt: new Date(),
         titleOptions: script?.titleOptions ?? [],
