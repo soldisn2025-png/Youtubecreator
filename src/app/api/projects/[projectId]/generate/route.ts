@@ -1,9 +1,9 @@
-import { NextResponse, after } from "next/server";
+import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUserId } from "@/lib/server/auth";
 import { runFullGeneration } from "@/services/generation";
 
-export const maxDuration = 300;
+export const maxDuration = 60;
 
 export async function POST(
   _request: Request,
@@ -28,7 +28,7 @@ export async function POST(
         projectId,
         type: "full_generation",
         status: "queued",
-        currentStep: "Getting ready to write your script...",
+        currentStep: "Getting ready…",
       },
     });
 
@@ -37,9 +37,8 @@ export async function POST(
       data: { status: "generating" },
     });
 
-    after(async () => {
-      await runFullGeneration(job.id, projectId, userId);
-    });
+    // Run synchronously — fits within Vercel Hobby 60s limit using Haiku
+    await runFullGeneration(job.id, projectId, userId);
 
     return NextResponse.json({ job });
   } catch (error) {

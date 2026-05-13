@@ -63,6 +63,7 @@ export default function ProjectEditor({ initialProject }: { initialProject: Proj
       : null
   );
   const [genError, setGenError] = useState("");
+  const [generating, setGenerating] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState("");
 
@@ -79,11 +80,16 @@ export default function ProjectEditor({ initialProject }: { initialProject: Proj
 
   async function startGeneration() {
     setGenError("");
-    const res = await fetch(`/api/projects/${project.id}/generate`, { method: "POST" });
-    const data = await res.json();
-    if (!res.ok) { setGenError(data.error ?? "Failed to start generation."); return; }
-    setGeneratingJobId(data.job.id);
-    setProject((p) => ({ ...p, status: "generating" }));
+    setGenerating(true);
+    try {
+      const res = await fetch(`/api/projects/${project.id}/generate`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) { setGenError(data.error ?? "Failed to start generation."); return; }
+      setGeneratingJobId(data.job.id);
+      setProject((p) => ({ ...p, status: "generating" }));
+    } finally {
+      setGenerating(false);
+    }
   }
 
   const onGenerationComplete = useCallback(async () => {
@@ -151,8 +157,8 @@ export default function ProjectEditor({ initialProject }: { initialProject: Proj
           <div className="flex flex-wrap gap-2">
             <Link href="/api/auth/signout" className="button-secondary text-sm">Sign out</Link>
             {!isLocked && (
-              <button className="button-primary" onClick={startGeneration} disabled={!!generatingJobId}>
-                {generatingJobId ? "Generating…" : "Create draft"}
+              <button className="button-primary" onClick={startGeneration} disabled={generating || !!generatingJobId}>
+                {generating ? "Writing script… (20–40s)" : generatingJobId ? "Generating…" : "Create draft"}
               </button>
             )}
           </div>
@@ -247,8 +253,22 @@ export default function ProjectEditor({ initialProject }: { initialProject: Proj
               </div>
             </div>
 
-            {/* Generation poller */}
-            {generatingJobId && (
+            {/* Synchronous generation loading state */}
+            {generating && (
+              <div className="panel space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="font-bold text-[#17201b]">Claude is writing your script…</p>
+                  <p className="text-xs text-[#8a9690]">20–40 seconds</p>
+                </div>
+                <div className="h-2 w-full overflow-hidden bg-[#d9ddd1]">
+                  <div className="h-2 w-1/2 animate-[slide_1.4s_ease-in-out_infinite] bg-[#3f6f65]" />
+                </div>
+                <p className="text-sm text-[#59645d]">Researching your topic and generating scenes…</p>
+              </div>
+            )}
+
+            {/* Generation poller (polls after sync response returns) */}
+            {generatingJobId && !generating && (
               <GenerationPoller
                 jobId={generatingJobId}
                 onComplete={onGenerationComplete}

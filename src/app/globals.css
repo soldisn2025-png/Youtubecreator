@@ -245,6 +245,11 @@ textarea {
   color: #31423a;
 }
 
+@keyframes slide {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(300%); }
+}
+
 @keyframes pulse-border {
   0%, 100% { border-color: #d9ddd1; }
   50% { border-color: #3f6f65; box-shadow: 0 0 0 3px rgba(63, 111, 101, 0.15); }
