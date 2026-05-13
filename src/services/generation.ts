@@ -36,6 +36,9 @@ export async function runFullGeneration(jobId: string, projectId: string, userId
       data: { progressPct: 75, currentStep: "Saving scenes..." },
     });
 
+    // Delete scenes from any previous generation before creating new ones
+    await prisma.scene.deleteMany({ where: { projectId: project.id } });
+
     const generatedScript = await prisma.generatedScript.create({
       data: {
         projectId: project.id,

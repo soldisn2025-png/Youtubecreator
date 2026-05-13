@@ -13,8 +13,8 @@ export async function POST(
       where: { id: sceneId, projectId, project: { userId } },
     });
     if (!scene) return NextResponse.json({ error: "Scene not found." }, { status: 404 });
-    if (scene.status !== "ready" && scene.status !== "approved") {
-      return NextResponse.json({ error: "Only ready scenes can be approved." }, { status: 409 });
+    if (scene.status === "locked") {
+      return NextResponse.json({ error: "This scene is locked." }, { status: 409 });
     }
     const approved = await prisma.scene.update({
       where: { id: sceneId },

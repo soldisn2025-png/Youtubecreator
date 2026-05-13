@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUserId } from "@/lib/server/auth";
 import { sceneUpdateSchema } from "@/lib/validation";
-import { ensureBossStarted } from "@/services/jobs";
 
 export async function PATCH(
   request: Request,
@@ -16,8 +15,8 @@ export async function PATCH(
       where: { id: sceneId, projectId, project: { userId } },
     });
     if (!scene) return NextResponse.json({ error: "Scene not found." }, { status: 404 });
-    if (["tts_pending", "rendering", "locked"].includes(scene.status)) {
-      return NextResponse.json({ error: "This scene is still processing." }, { status: 409 });
+    if (scene.status === "locked") {
+      return NextResponse.json({ error: "This scene is locked." }, { status: 409 });
     }
 
     await prisma.sceneRevision.create({
@@ -28,34 +27,17 @@ export async function PATCH(
       },
     });
 
-    const narrationChanged =
-      input.narrationText !== undefined && input.narrationText !== scene.narrationText;
-
     const updated = await prisma.scene.update({
       where: { id: sceneId },
       data: {
         ...input,
-        status: narrationChanged ? "tts_pending" : "rendering",
+        status: "ready",
         approvedAt: null,
         generationId: crypto.randomUUID(),
       },
     });
 
-    const job = await prisma.generationJob.create({
-      data: {
-        projectId,
-        sceneId,
-        type: "scene_regeneration",
-        status: "queued",
-        currentStep: narrationChanged
-          ? "Updating the voiceover for this scene..."
-          : "Updating this scene...",
-      },
-    });
-    const boss = await ensureBossStarted();
-    await boss.send("scene-regeneration", { jobId: job.id, projectId, sceneId, userId });
-
-    return NextResponse.json({ scene: updated, job });
+    return NextResponse.json({ scene: updated });
   } catch (error) {
     if (error instanceof Response) return error;
     return NextResponse.json({ error: "Scene could not be updated." }, { status: 400 });
