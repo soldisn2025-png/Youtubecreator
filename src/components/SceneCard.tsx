@@ -106,7 +106,7 @@ export default function SceneCard({ scene: initial, index, projectId, onUpdated 
     try {
       const fd = new FormData();
       fd.append("file", file);
-      fd.append("type", "photo");
+      fd.append("type", file.type.startsWith("video/") ? "clip" : "photo");
       const uploadRes = await fetch(`/api/projects/${projectId}/assets`, {
         method: "POST",
         body: fd,
