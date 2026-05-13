@@ -21,7 +21,7 @@ export function VideoComposition(props: VideoProps) {
         const durationFrames = Math.round((scene.durationSec || DEFAULT_SCENE_DURATION_SEC) * fps);
         return (
           <Series.Sequence key={i} durationInFrames={durationFrames}>
-            <SceneSlide scene={scene} />
+            <SceneSlide scene={scene} index={i} />
           </Series.Sequence>
         );
       })}

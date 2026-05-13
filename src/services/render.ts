@@ -2,6 +2,7 @@ import { renderMediaOnLambda, getRenderProgress } from "@remotion/lambda/client"
 import { prisma } from "@/lib/prisma";
 import { generateSpeech } from "./tts";
 import { uploadObject, downloadObject } from "./storage";
+import { findPexelsVideo } from "./pexels";
 import { requiredEnv, optionalEnv } from "@/lib/config";
 import type { VideoProps, SceneInput } from "@/remotion/types";
 
@@ -26,6 +27,8 @@ export async function startRender(projectId: string, userId: string): Promise<st
     },
   });
 
+  const baseUrl = requiredEnv("R2_PUBLIC_BASE_URL").replace(/\/$/, "");
+
   // Generate TTS for scenes that don't have audio yet
   const sceneInputs: SceneInput[] = [];
   for (const scene of project.scenes) {
@@ -48,18 +51,31 @@ export async function startRender(projectId: string, userId: string): Promise<st
       audioUrl = `${requiredEnv("R2_PUBLIC_BASE_URL").replace(/\/$/, "")}/${scene.ttsAudioR2Key}`;
     }
 
-    // Find the asset linked to this scene
+    // Resolve media for this scene
     const assetForScene = scene.assetId
       ? project.assets.find((a) => a.id === scene.assetId)
       : null;
-    const imageUrl = assetForScene
-      ? `${requiredEnv("R2_PUBLIC_BASE_URL").replace(/\/$/, "")}/${assetForScene.r2Key}`
-      : null;
+
+    let imageUrl: string | null = null;
+    let videoUrl: string | null = null;
+
+    if (assetForScene) {
+      const assetUrl = `${baseUrl}/${assetForScene.r2Key}`;
+      if (assetForScene.type === "clip") {
+        videoUrl = assetUrl;
+      } else {
+        imageUrl = assetUrl;
+      }
+    } else {
+      // No uploaded media — try Pexels stock footage
+      videoUrl = await findPexelsVideo(scene.sceneTitle);
+    }
 
     sceneInputs.push({
       sceneTitle: scene.sceneTitle,
       captionText: scene.captionText,
       imageUrl,
+      videoUrl,
       audioUrl,
       durationSec: scene.ttsAudioDurationSec ?? 8,
     });
@@ -71,7 +87,6 @@ export async function startRender(projectId: string, userId: string): Promise<st
   const outroAsset = project.outroAssetId
     ? project.assets.find((a) => a.id === project.outroAssetId)
     : null;
-  const baseUrl = requiredEnv("R2_PUBLIC_BASE_URL").replace(/\/$/, "");
 
   const videoProps: VideoProps = {
     scenes: sceneInputs,

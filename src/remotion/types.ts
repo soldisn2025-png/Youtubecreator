@@ -2,6 +2,7 @@ export interface SceneInput {
   sceneTitle: string;
   captionText: string;
   imageUrl: string | null;
+  videoUrl: string | null;
   audioUrl: string | null;
   durationSec: number;
 }

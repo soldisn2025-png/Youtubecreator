@@ -1,52 +1,85 @@
-import { AbsoluteFill, Audio, Img, interpolate, useCurrentFrame, useVideoConfig, staticFile } from "remotion";
+"use client";
+import { AbsoluteFill, Audio, Img, Video, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 import type { SceneInput } from "./types";
 
-export function SceneSlide({ scene }: { scene: SceneInput }) {
-  const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
+// Four Ken Burns presets — alternates per scene so consecutive scenes feel different
+const KB = [
+  { s0: 1.0, s1: 1.10, x0: 0, x1: -2, y0: 0, y1: -1.5 },
+  { s0: 1.10, s1: 1.0, x0: -2, x1: 0, y0: -1.5, y1: 0 },
+  { s0: 1.0, s1: 1.08, x0: 2, x1: -1, y0: 0, y1: -2 },
+  { s0: 1.08, s1: 1.0, x0: -1, x1: 2, y0: -2, y1: 0 },
+];
 
-  const opacity = interpolate(frame, [0, fps * 0.3], [0, 1], { extrapolateRight: "clamp" });
+export function SceneSlide({ scene, index = 0 }: { scene: SceneInput; index?: number }) {
+  const frame = useCurrentFrame();
+  const { fps, durationInFrames } = useVideoConfig();
+
+  const kb = KB[index % KB.length];
+  const scale = interpolate(frame, [0, durationInFrames], [kb.s0, kb.s1]);
+  const tx = interpolate(frame, [0, durationInFrames], [kb.x0, kb.x1]);
+  const ty = interpolate(frame, [0, durationInFrames], [kb.y0, kb.y1]);
+
+  const fadeIn = fps * 0.25;
+  const captionOpacity = interpolate(frame, [fadeIn, fadeIn + fps * 0.5], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const captionY = interpolate(frame, [fadeIn, fadeIn + fps * 0.5], [24, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
 
   return (
-    <AbsoluteFill style={{ background: "#1a1a1a" }}>
-      {scene.imageUrl && (
-        <Img
-          src={scene.imageUrl}
-          style={{
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-            opacity: 0.85,
-          }}
+    <AbsoluteFill style={{ background: "#111", overflow: "hidden" }}>
+
+      {/* Media layer */}
+      {scene.videoUrl ? (
+        <Video
+          src={scene.videoUrl}
+          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+          startFrom={0}
+          loop
+          volume={0}
         />
+      ) : scene.imageUrl ? (
+        <AbsoluteFill style={{ overflow: "hidden" }}>
+          <Img
+            src={scene.imageUrl}
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              opacity: 0.88,
+              transform: `scale(${scale}) translate(${tx}%, ${ty}%)`,
+              transformOrigin: "center center",
+            }}
+          />
+        </AbsoluteFill>
+      ) : (
+        <AbsoluteFill style={{ background: "linear-gradient(135deg, #17201b 0%, #2d4a3e 100%)" }} />
       )}
 
-      {/* Dark gradient overlay at bottom for caption readability */}
+      {/* Gradient for caption readability */}
       <AbsoluteFill
         style={{
-          background: "linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 50%)",
+          background: "linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.15) 40%, transparent 65%)",
         }}
       />
 
-      {/* Caption text */}
+      {/* Caption */}
       <AbsoluteFill
         style={{
           display: "flex",
           flexDirection: "column",
           justifyContent: "flex-end",
           padding: "48px 64px",
-          opacity,
+          opacity: captionOpacity,
+          transform: `translateY(${captionY}px)`,
         }}
       >
         <p
           style={{
             color: "#fff",
-            fontSize: 36,
+            fontSize: 38,
             fontWeight: 700,
             fontFamily: "Arial, sans-serif",
-            lineHeight: 1.4,
-            textShadow: "0 2px 8px rgba(0,0,0,0.6)",
-            maxWidth: 900,
+            lineHeight: 1.45,
+            textShadow: "0 2px 12px rgba(0,0,0,0.85)",
+            maxWidth: 1000,
           }}
         >
           {scene.captionText}

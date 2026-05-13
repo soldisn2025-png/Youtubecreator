@@ -10,24 +10,39 @@ export function TitleSlide({
   isOutro?: boolean;
 }) {
   const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
+  const { fps, durationInFrames } = useVideoConfig();
+
+  // Gentle Ken Burns zoom on title slides
+  const scale = interpolate(frame, [0, durationInFrames], [1.0, 1.06]);
+
   const opacity = interpolate(frame, [0, fps * 0.4], [0, 1], { extrapolateRight: "clamp" });
+  const textY = interpolate(frame, [0, fps * 0.4], [20, 0], { extrapolateRight: "clamp" });
 
   return (
-    <AbsoluteFill style={{ background: "#17201b" }}>
+    <AbsoluteFill style={{ background: "#17201b", overflow: "hidden" }}>
       {imageUrl && (
-        <Img
-          src={imageUrl}
-          style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.6 }}
-        />
+        <AbsoluteFill style={{ overflow: "hidden" }}>
+          <Img
+            src={imageUrl}
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              opacity: 0.6,
+              transform: `scale(${scale})`,
+              transformOrigin: "center center",
+            }}
+          />
+        </AbsoluteFill>
       )}
+      <AbsoluteFill style={{ background: "rgba(0,0,0,0.45)" }} />
       <AbsoluteFill
         style={{
-          background: "rgba(0,0,0,0.45)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           opacity,
+          transform: `translateY(${textY}px)`,
         }}
       >
         <p
