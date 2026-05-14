@@ -66,6 +66,26 @@ export async function runFullGeneration(jobId: string, projectId: string, userId
       })),
     });
 
+    // Distribute uploaded photos/clips across scenes in round-robin order
+    const mediaAssets = project.assets.filter(
+      (a) => a.type === "photo" || a.type === "clip"
+    );
+    if (mediaAssets.length > 0) {
+      const createdScenes = await prisma.scene.findMany({
+        where: { projectId: project.id },
+        orderBy: { orderIndex: "asc" },
+        select: { id: true },
+      });
+      await Promise.all(
+        createdScenes.map((scene, i) =>
+          prisma.scene.update({
+            where: { id: scene.id },
+            data: { assetId: mediaAssets[i % mediaAssets.length].id },
+          })
+        )
+      );
+    }
+
     await prisma.generationJob.update({
       where: { id: jobId },
       data: { status: "complete", progressPct: 100, currentStep: "Done — ready to review!", completedAt: new Date() },

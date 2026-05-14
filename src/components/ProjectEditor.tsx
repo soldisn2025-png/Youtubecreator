@@ -80,6 +80,7 @@ export default function ProjectEditor({ initialProject }: { initialProject: Proj
     latestRender?.status === "complete" ? `/api/render-jobs/${latestRender.id}/download` : null
   );
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>("vertical_9_16");
+  const [ytConfirm, setYtConfirm] = useState(false);
 
   const assetCountByType = (type: string) =>
     project.assets.filter((a) => a.type === type).length;
@@ -199,11 +200,6 @@ export default function ProjectEditor({ initialProject }: { initialProject: Proj
             {!isLocked && (
               <button className="button-primary" onClick={startGeneration} disabled={generating || !!generatingJobId}>
                 {generating ? "Writing script… (20–40s)" : generatingJobId ? "Generating…" : "Create draft"}
-              </button>
-            )}
-            {allScenesApproved && !renderJobId && (
-              <button className="button-primary" onClick={startRender} disabled={rendering}>
-                {rendering ? "Starting render…" : "Render video"}
               </button>
             )}
           </div>
@@ -405,49 +401,76 @@ export default function ProjectEditor({ initialProject }: { initialProject: Proj
               </div>
             )}
 
-            {/* Export & upload */}
-            <div className="grid gap-5 md:grid-cols-2">
-              <div className="panel">
-                <h2 className="panel-title">Export package</h2>
-                <p className="muted mt-1">
-                  Includes final video, title ideas, description with chapters, hashtags, script, and missing media notes.
-                </p>
-                {exportError && <p className="mt-2 text-sm font-semibold text-red-600">{exportError}</p>}
+            {/* Render + Export + Upload — grouped at bottom */}
+            <div className="panel space-y-5">
+              <div>
+                <h2 className="panel-title">Render &amp; export</h2>
+                <p className="muted mt-1">Approve all scenes above, then render the video and export the full package.</p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3">
+                {allScenesApproved && !renderJobId && (
+                  <button className="button-primary" onClick={startRender} disabled={rendering}>
+                    {rendering ? "Starting render…" : "Render video"}
+                  </button>
+                )}
+                {!allScenesApproved && (
+                  <p className="text-sm text-[#59645d]">Approve all scenes to unlock render and export.</p>
+                )}
+                {exportError && <p className="text-sm font-semibold text-red-600">{exportError}</p>}
                 {project.exports.length > 0 ? (
-                  <div className="mt-3 space-y-2">
-                    <p className="text-sm font-bold text-[#1f5a3c]">Export complete ✓</p>
-                    <a
-                      href={`/api/projects/${project.id}/exports/${project.exports[0].id}/download`}
-                      className="button-secondary text-sm inline-flex"
-                      download
-                    >
-                      Download ZIP
-                    </a>
-                  </div>
+                  <a
+                    href={`/api/projects/${project.id}/exports/${project.exports[0].id}/download`}
+                    className="button-secondary text-sm inline-flex"
+                    download
+                  >
+                    Download export ZIP ✓
+                  </a>
                 ) : (
                   <button
-                    className="button-primary mt-4"
+                    className="button-secondary"
                     disabled={!allScenesApproved || exporting}
                     onClick={doExport}
                     title={!allScenesApproved ? "Approve all scenes first" : ""}
                   >
-                    {exporting ? "Exporting…" : "Export after approval"}
+                    {exporting ? "Exporting…" : "Export package"}
                   </button>
                 )}
               </div>
-              <div className="panel">
+
+              <div className="border-t border-[#d9ddd1] pt-4">
                 <h2 className="panel-title">Upload to YouTube</h2>
                 <p className="muted mt-1">
                   Download the ZIP, open YouTube Studio, create a new video, and paste in the script, description, and hashtags from the ZIP files.
                 </p>
-                <a
-                  href="https://studio.youtube.com"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="button-secondary mt-4 text-sm inline-flex"
-                >
-                  Open YouTube Studio ↗
-                </a>
+                {!ytConfirm ? (
+                  <button
+                    className="button-secondary mt-4 text-sm"
+                    onClick={() => setYtConfirm(true)}
+                  >
+                    Open YouTube Studio ↗
+                  </button>
+                ) : (
+                  <div className="mt-4 rounded border border-amber-300 bg-amber-50 p-3 space-y-3">
+                    <p className="text-sm font-semibold text-amber-800">
+                      You are uploading this draft as-is with no additional edits. Are you sure?
+                    </p>
+                    <div className="flex gap-2">
+                      <a
+                        href="https://studio.youtube.com"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="button-primary text-sm inline-flex"
+                        onClick={() => setYtConfirm(false)}
+                      >
+                        Yes, open YouTube Studio
+                      </a>
+                      <button className="button-secondary text-sm" onClick={() => setYtConfirm(false)}>
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
