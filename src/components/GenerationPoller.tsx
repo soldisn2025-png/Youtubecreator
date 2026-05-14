@@ -14,7 +14,7 @@ export default function GenerationPoller({ jobId, onComplete, onFailed }: Props)
   const [progress, setProgress] = useState(0);
   const [step, setStep] = useState("Starting…");
   const [timedOut, setTimedOut] = useState(false);
-  const startedAt = useRef(Date.now());
+  const startedAt = useRef<number | null>(null);
 
   useEffect(() => {
     let stopped = false;
@@ -25,7 +25,7 @@ export default function GenerationPoller({ jobId, onComplete, onFailed }: Props)
         await new Promise((r) => setTimeout(r, 3000));
         if (stopped) break;
 
-        if (Date.now() - startedAt.current > TIMEOUT_MS) {
+        if (startedAt.current && Date.now() - startedAt.current > TIMEOUT_MS) {
           setTimedOut(true);
           return;
         }
@@ -53,7 +53,7 @@ export default function GenerationPoller({ jobId, onComplete, onFailed }: Props)
         <p className="font-bold text-orange-800">Generation is taking longer than expected</p>
         <p className="text-sm text-orange-700">
           This usually means the server timed out before Claude finished writing your script.
-          Click "Try again" — the second attempt typically succeeds.
+          Click &quot;Try again&quot; — the second attempt typically succeeds.
         </p>
         <button
           className="button-primary mt-2 text-sm"

@@ -1,6 +1,7 @@
 "use client";
 import { AbsoluteFill, Audio, Img, Video, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
-import type { SceneInput } from "./types";
+import type { AspectRatio, MediaInput, SceneInput } from "./types";
+import { getBeatCount, splitCaptionIntoBeats } from "./timeline";
 
 // Four Ken Burns presets — alternates per scene so consecutive scenes feel different
 const KB = [
@@ -10,44 +11,82 @@ const KB = [
   { s0: 1.18, s1: 1.0,  x0: -2, x1: 4,  y0: -4, y1: 0  },
 ];
 
-export function SceneSlide({ scene, index = 0 }: { scene: SceneInput; index?: number }) {
+function MediaLayer({
+  media,
+  opacity,
+  scale,
+  tx,
+  ty,
+}: {
+  media: MediaInput;
+  opacity: number;
+  scale: number;
+  tx: number;
+  ty: number;
+}) {
+  const style = {
+    width: "100%",
+    height: "100%",
+    objectFit: "cover" as const,
+    opacity,
+    transform: `scale(${scale}) translate(${tx}%, ${ty}%)`,
+    transformOrigin: "center center",
+  };
+
+  return media.type === "video" ? (
+    <Video src={media.url} style={style} startFrom={0} loop volume={0} />
+  ) : (
+    <Img src={media.url} style={style} />
+  );
+}
+
+export function SceneSlide({
+  scene,
+  index = 0,
+  aspectRatio = "horizontal_16_9",
+}: {
+  scene: SceneInput;
+  index?: number;
+  aspectRatio?: AspectRatio;
+}) {
   const frame = useCurrentFrame();
-  const { fps, durationInFrames } = useVideoConfig();
+  const { fps } = useVideoConfig();
+  const durationInFrames = Math.max(1, Math.round((scene.durationSec || 8) * fps));
+  const beatCount = Math.max(getBeatCount(scene.durationSec), scene.mediaItems.length || 0);
+  const beatFrames = Math.max(1, Math.ceil(durationInFrames / beatCount));
+  const beatIndex = Math.min(beatCount - 1, Math.floor(frame / beatFrames));
+  const beatFrame = frame - beatIndex * beatFrames;
+  const mediaItems: MediaInput[] = scene.mediaItems.length
+    ? scene.mediaItems
+    : scene.videoUrl
+      ? [{ url: scene.videoUrl, type: "video" }]
+      : scene.imageUrl
+        ? [{ url: scene.imageUrl, type: "image" }]
+        : [];
+  const currentMedia = mediaItems[beatIndex % Math.max(1, mediaItems.length)];
+  const previousMedia = mediaItems.length > 1 ? mediaItems[(beatIndex - 1 + mediaItems.length) % mediaItems.length] : null;
+  const captions = scene.beatCaptions.length ? scene.beatCaptions : splitCaptionIntoBeats(scene.captionText, beatCount);
+  const caption = captions[beatIndex % Math.max(1, captions.length)] || scene.captionText;
+  const isVertical = aspectRatio === "vertical_9_16";
 
   const kb = KB[index % KB.length];
-  const scale = interpolate(frame, [0, durationInFrames], [kb.s0, kb.s1]);
-  const tx = interpolate(frame, [0, durationInFrames], [kb.x0, kb.x1]);
-  const ty = interpolate(frame, [0, durationInFrames], [kb.y0, kb.y1]);
+  const scale = interpolate(beatFrame, [0, beatFrames], [kb.s0, kb.s1]);
+  const tx = interpolate(beatFrame, [0, beatFrames], [kb.x0, kb.x1]);
+  const ty = interpolate(beatFrame, [0, beatFrames], [kb.y0, kb.y1]);
+  const mediaOpacity = interpolate(beatFrame, [0, fps * 0.35], [0, 0.9], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const previousOpacity = interpolate(beatFrame, [0, fps * 0.35], [0.9, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
 
-  const fadeIn = fps * 0.25;
-  const captionOpacity = interpolate(frame, [fadeIn, fadeIn + fps * 0.5], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
-  const captionY = interpolate(frame, [fadeIn, fadeIn + fps * 0.5], [24, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const captionOpacity = interpolate(beatFrame, [fps * 0.1, fps * 0.45], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const captionY = interpolate(beatFrame, [fps * 0.1, fps * 0.45], [24, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
 
   return (
     <AbsoluteFill style={{ background: "#111", overflow: "hidden" }}>
 
       {/* Media layer */}
-      {scene.videoUrl ? (
-        <Video
-          src={scene.videoUrl}
-          style={{ width: "100%", height: "100%", objectFit: "cover" }}
-          startFrom={0}
-          loop
-          volume={0}
-        />
-      ) : scene.imageUrl ? (
+      {currentMedia ? (
         <AbsoluteFill style={{ overflow: "hidden" }}>
-          <Img
-            src={scene.imageUrl}
-            style={{
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-              opacity: 0.88,
-              transform: `scale(${scale}) translate(${tx}%, ${ty}%)`,
-              transformOrigin: "center center",
-            }}
-          />
+          {previousMedia && <MediaLayer media={previousMedia} opacity={previousOpacity} scale={1.08} tx={0} ty={0} />}
+          <MediaLayer media={currentMedia} opacity={mediaOpacity} scale={scale} tx={tx} ty={ty} />
         </AbsoluteFill>
       ) : (
         <AbsoluteFill style={{ background: "linear-gradient(135deg, #17201b 0%, #2d4a3e 100%)" }} />
@@ -66,7 +105,7 @@ export function SceneSlide({ scene, index = 0 }: { scene: SceneInput; index?: nu
           display: "flex",
           flexDirection: "column",
           justifyContent: "flex-end",
-          padding: "48px 64px",
+          padding: isVertical ? "0 64px 180px" : "48px 64px",
           opacity: captionOpacity,
           transform: `translateY(${captionY}px)`,
         }}
@@ -74,15 +113,15 @@ export function SceneSlide({ scene, index = 0 }: { scene: SceneInput; index?: nu
         <p
           style={{
             color: "#fff",
-            fontSize: 38,
+            fontSize: isVertical ? 54 : 38,
             fontWeight: 700,
             fontFamily: "Arial, sans-serif",
-            lineHeight: 1.45,
+            lineHeight: 1.22,
             textShadow: "0 2px 12px rgba(0,0,0,0.85)",
-            maxWidth: 1000,
+            maxWidth: isVertical ? 920 : 1000,
           }}
         >
-          {scene.captionText}
+          {caption}
         </p>
       </AbsoluteFill>
 

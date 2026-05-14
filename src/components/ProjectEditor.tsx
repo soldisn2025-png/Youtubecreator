@@ -20,6 +20,7 @@ interface Scene {
 interface Job { id: string; status: string; currentStep: string | null; progressPct: number; }
 interface ExportPkg { id: string; zipR2Key: string | null; }
 interface RenderJob { id: string; status: string; progressPct: number; outputR2Key: string | null; }
+type AspectRatio = "vertical_9_16" | "horizontal_16_9";
 interface Project {
   id: string;
   title: string;
@@ -78,17 +79,18 @@ export default function ProjectEditor({ initialProject }: { initialProject: Proj
   const [videoUrl, setVideoUrl] = useState<string | null>(
     latestRender?.status === "complete" ? `/api/render-jobs/${latestRender.id}/download` : null
   );
+  const [aspectRatio, setAspectRatio] = useState<AspectRatio>("vertical_9_16");
 
   const assetCountByType = (type: string) =>
     project.assets.filter((a) => a.type === type).length;
 
-  async function reloadProject() {
+  const reloadProject = useCallback(async () => {
     const res = await fetch(`/api/projects/${project.id}`);
     if (res.ok) {
       const data = await res.json();
       setProject(data.project);
     }
-  }
+  }, [project.id]);
 
   async function startGeneration() {
     setGenError("");
@@ -107,7 +109,7 @@ export default function ProjectEditor({ initialProject }: { initialProject: Proj
   const onGenerationComplete = useCallback(async () => {
     setGeneratingJobId(null);
     await reloadProject();
-  }, [project.id]);
+  }, [reloadProject]);
 
   const onGenerationFailed = useCallback((msg: string) => {
     setGeneratingJobId(null);
@@ -153,7 +155,11 @@ export default function ProjectEditor({ initialProject }: { initialProject: Proj
     setRenderError("");
     setRendering(true);
     try {
-      const res = await fetch(`/api/projects/${project.id}/render`, { method: "POST" });
+      const res = await fetch(`/api/projects/${project.id}/render`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ aspectRatio }),
+      });
       const data = await res.json();
       if (!res.ok) { setRenderError(data.error ?? "Render failed to start."); return; }
       setRenderJobId(data.renderJobId);
@@ -263,6 +269,25 @@ export default function ProjectEditor({ initialProject }: { initialProject: Proj
                 <p><span className="font-bold">Voice:</span> {VOICE_LABELS[project.ttsVoice] ?? project.ttsVoice}</p>
                 <p><span className="font-bold">Tone:</span> {project.tone}</p>
               </div>
+              <div className="mt-4">
+                <label className="field-label">Render format</label>
+                <div className="segmented mt-2">
+                  <button
+                    type="button"
+                    className={aspectRatio === "vertical_9_16" ? "segment-active" : ""}
+                    onClick={() => setAspectRatio("vertical_9_16")}
+                  >
+                    Shorts 9:16
+                  </button>
+                  <button
+                    type="button"
+                    className={aspectRatio === "horizontal_16_9" ? "segment-active" : ""}
+                    onClick={() => setAspectRatio("horizontal_16_9")}
+                  >
+                    YouTube 16:9
+                  </button>
+                </div>
+              </div>
             </div>
           </aside>
 
@@ -350,7 +375,7 @@ export default function ProjectEditor({ initialProject }: { initialProject: Proj
             {project.scenes.length === 0 && !generatingJobId && (
               <div className="panel text-center py-12">
                 <p className="font-bold text-[#17201b]">No scenes yet</p>
-                <p className="muted mt-1">Click "Create draft" to generate your script and scenes.</p>
+                <p className="muted mt-1">Click &quot;Create draft&quot; to generate your script and scenes.</p>
               </div>
             )}
 

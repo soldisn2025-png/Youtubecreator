@@ -2,16 +2,19 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUserId } from "@/lib/server/auth";
 import { startRender } from "@/services/render";
+import { parseAspectRatio } from "@/remotion/timeline";
 
 export const maxDuration = 300;
 
 export async function POST(
-  _request: Request,
+  request: Request,
   context: { params: Promise<{ projectId: string }> },
 ) {
   try {
     const userId = await requireUserId();
     const { projectId } = await context.params;
+    const body = await request.json().catch(() => ({}));
+    const aspectRatio = parseAspectRatio(body.aspectRatio);
 
     const project = await prisma.project.findFirst({ where: { id: projectId, userId } });
     if (!project) return NextResponse.json({ error: "Project not found." }, { status: 404 });
@@ -29,7 +32,7 @@ export async function POST(
       data: { status: "failed", errorMessage: "Superseded by new render." },
     });
 
-    const renderJobId = await startRender(projectId, userId);
+    const renderJobId = await startRender(projectId, userId, aspectRatio);
     return NextResponse.json({ renderJobId });
   } catch (error) {
     if (error instanceof Response) return error;

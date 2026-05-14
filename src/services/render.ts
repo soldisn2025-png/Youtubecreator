@@ -1,10 +1,11 @@
 import { renderMediaOnLambda, getRenderProgress } from "@remotion/lambda/client";
 import { prisma } from "@/lib/prisma";
 import { generateSpeech } from "./tts";
-import { uploadObject, downloadObject } from "./storage";
+import { uploadObject } from "./storage";
 import { findPexelsVideo } from "./pexels";
-import { requiredEnv, optionalEnv } from "@/lib/config";
-import type { VideoProps, SceneInput } from "@/remotion/types";
+import { requiredEnv } from "@/lib/config";
+import { getBeatCount, splitCaptionIntoBeats } from "@/remotion/timeline";
+import type { AspectRatio, MediaInput, VideoProps, SceneInput } from "@/remotion/types";
 
 const FUNCTION_NAME = "remotion-render-4-0-460-mem3008mb-disk10240mb-900sec";
 const SERVE_URL = "https://remotionlambda-useast1-tlov7ow10m.s3.us-east-1.amazonaws.com/sites/youtubecreator/index.html";
@@ -18,7 +19,11 @@ function remotionAwsConfig() {
   };
 }
 
-export async function startRender(projectId: string, userId: string): Promise<string> {
+export async function startRender(
+  projectId: string,
+  userId: string,
+  aspectRatio: AspectRatio = "horizontal_16_9",
+): Promise<string> {
   const project = await prisma.project.findFirstOrThrow({
     where: { id: projectId, userId },
     include: {
@@ -28,6 +33,30 @@ export async function startRender(projectId: string, userId: string): Promise<st
   });
 
   const baseUrl = requiredEnv("R2_PUBLIC_BASE_URL").replace(/\/$/, "");
+  const reusableAssets = project.assets.filter((asset) => asset.type === "photo" || asset.type === "clip");
+  let reusableAssetCursor = 0;
+
+  const assetToMediaInput = (asset: (typeof project.assets)[number]): MediaInput => ({
+    url: `${baseUrl}/${asset.r2Key}`,
+    type: asset.type === "clip" ? "video" : "image",
+  });
+
+  const nextReusableMedia = (usedAssetIds: Set<string>): MediaInput[] => {
+    if (reusableAssets.length === 0) return [];
+
+    const selected: MediaInput[] = [];
+    const maxItems = Math.min(3, reusableAssets.length);
+    let attempts = 0;
+    while (selected.length < maxItems && attempts < reusableAssets.length * 2) {
+      const asset = reusableAssets[reusableAssetCursor % reusableAssets.length];
+      reusableAssetCursor += 1;
+      attempts += 1;
+      if (usedAssetIds.has(asset.id)) continue;
+      usedAssetIds.add(asset.id);
+      selected.push(assetToMediaInput(asset));
+    }
+    return selected;
+  };
 
   // Generate TTS for scenes that don't have audio yet
   const sceneInputs: SceneInput[] = [];
@@ -58,15 +87,23 @@ export async function startRender(projectId: string, userId: string): Promise<st
 
     let imageUrl: string | null = null;
     let videoUrl: string | null = null;
+    const mediaItems: MediaInput[] = [];
+    const usedAssetIds = new Set<string>();
 
     if (assetForScene) {
       const assetUrl = `${baseUrl}/${assetForScene.r2Key}`;
+      usedAssetIds.add(assetForScene.id);
+      mediaItems.push(assetToMediaInput(assetForScene));
       if (assetForScene.type === "clip") {
         videoUrl = assetUrl;
       } else {
         imageUrl = assetUrl;
       }
-    } else {
+    }
+
+    mediaItems.push(...nextReusableMedia(usedAssetIds));
+
+    if (mediaItems.length === 0) {
       // No uploaded media — fetch Pexels stock footage and cache in R2
       // (Lambda can't reliably reach Pexels CDN directly, so we proxy through R2)
       const stockKey = `${userId}/${projectId}/stock/${scene.id}.mp4`;
@@ -78,6 +115,7 @@ export async function startRender(projectId: string, userId: string): Promise<st
             const buf = Buffer.from(await resp.arrayBuffer());
             await uploadObject({ key: stockKey, body: buf, contentType: "video/mp4" });
             videoUrl = `${baseUrl}/${stockKey}`;
+            mediaItems.push({ url: videoUrl, type: "video" });
           }
         } catch {
           // Pexels download failed — scene will use gradient background
@@ -88,6 +126,8 @@ export async function startRender(projectId: string, userId: string): Promise<st
     sceneInputs.push({
       sceneTitle: scene.sceneTitle,
       captionText: scene.captionText,
+      beatCaptions: splitCaptionIntoBeats(scene.captionText, getBeatCount(scene.ttsAudioDurationSec ?? 8)),
+      mediaItems,
       imageUrl,
       videoUrl,
       audioUrl,
@@ -108,6 +148,7 @@ export async function startRender(projectId: string, userId: string): Promise<st
     outroImageUrl: outroAsset ? `${baseUrl}/${outroAsset.r2Key}` : null,
     projectTitle: project.title,
     fps: 30,
+    aspectRatio,
   };
 
   const cfg = remotionAwsConfig();

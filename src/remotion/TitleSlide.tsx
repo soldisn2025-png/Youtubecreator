@@ -1,16 +1,20 @@
 import { AbsoluteFill, Img, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
+import type { AspectRatio } from "./types";
 
 export function TitleSlide({
   title,
   imageUrl,
   isOutro,
+  aspectRatio = "horizontal_16_9",
 }: {
   title: string;
   imageUrl: string | null;
   isOutro?: boolean;
+  aspectRatio?: AspectRatio;
 }) {
   const frame = useCurrentFrame();
   const { fps, durationInFrames } = useVideoConfig();
+  const isVertical = aspectRatio === "vertical_9_16";
 
   // Gentle Ken Burns zoom on title slides
   const scale = interpolate(frame, [0, durationInFrames], [1.0, 1.06]);
@@ -48,11 +52,11 @@ export function TitleSlide({
         <p
           style={{
             color: "#fff",
-            fontSize: isOutro ? 40 : 52,
+            fontSize: isVertical ? (isOutro ? 54 : 68) : (isOutro ? 40 : 52),
             fontWeight: 800,
             fontFamily: "Arial, sans-serif",
             textAlign: "center",
-            padding: "0 80px",
+            padding: isVertical ? "0 72px" : "0 80px",
             textShadow: "0 4px 16px rgba(0,0,0,0.7)",
             lineHeight: 1.3,
           }}
