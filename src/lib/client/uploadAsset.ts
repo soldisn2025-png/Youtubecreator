@@ -39,13 +39,18 @@ async function uploadDirect(input: {
   });
   const presign = await parseJsonResponse(presignRes, "Could not prepare upload.");
 
-  const uploadRes = await fetch(presign.uploadUrl, {
-    method: "PUT",
-    headers: { "Content-Type": input.file.type },
-    body: input.file,
-  });
+  let uploadRes: Response;
+  try {
+    uploadRes = await fetch(presign.uploadUrl, {
+      method: "PUT",
+      headers: { "Content-Type": input.file.type },
+      body: input.file,
+    });
+  } catch {
+    throw new Error("Upload failed: could not reach storage. Ensure the R2 bucket CORS policy allows PUT from this origin.");
+  }
   if (!uploadRes.ok) {
-    throw new Error("Direct upload failed. Check the R2 bucket CORS settings and try again.");
+    throw new Error("Upload failed: storage rejected the file. Check R2 bucket CORS settings and try again.");
   }
 
   const completeRes = await fetch(`/api/projects/${input.projectId}/assets`, {
