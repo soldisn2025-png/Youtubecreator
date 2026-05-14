@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { uploadProjectAsset } from "@/lib/client/uploadAsset";
 
 interface Props {
   label: string;
@@ -21,15 +22,7 @@ export default function UploadTile({ label, type, projectId, count = 0, onUpload
     setError("");
     setUploading(true);
     try {
-      const fd = new FormData();
-      fd.append("file", file);
-      fd.append("type", type);
-      const res = await fetch(`/api/projects/${projectId}/assets`, {
-        method: "POST",
-        body: fd,
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Upload failed.");
+      const data = await uploadProjectAsset({ projectId, file, type });
       onUploaded(data.asset.id);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Upload failed.");

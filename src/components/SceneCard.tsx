@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { uploadProjectAsset } from "@/lib/client/uploadAsset";
 
 interface Scene {
   id: string;
@@ -104,15 +105,11 @@ export default function SceneCard({ scene: initial, index, projectId, onUpdated 
     setSwapping(true);
     setError("");
     try {
-      const fd = new FormData();
-      fd.append("file", file);
-      fd.append("type", file.type.startsWith("video/") ? "clip" : "photo");
-      const uploadRes = await fetch(`/api/projects/${projectId}/assets`, {
-        method: "POST",
-        body: fd,
+      const uploadData = await uploadProjectAsset({
+        projectId,
+        file,
+        type: file.type.startsWith("video/") ? "clip" : "photo",
       });
-      const uploadData = await uploadRes.json();
-      if (!uploadRes.ok) throw new Error(uploadData.error ?? "Upload failed.");
 
       const patchRes = await fetch(`/api/projects/${projectId}/scenes/${scene.id}`, {
         method: "PATCH",

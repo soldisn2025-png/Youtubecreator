@@ -1,4 +1,5 @@
 import { GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { Readable } from "stream";
 import { optionalEnv, requiredEnv } from "@/lib/config";
 
@@ -31,6 +32,22 @@ export async function uploadObject(input: {
   );
   const baseUrl = optionalEnv("R2_PUBLIC_BASE_URL");
   return baseUrl ? `${baseUrl.replace(/\/$/, "")}/${input.key}` : input.key;
+}
+
+export async function createUploadUrl(input: {
+  key: string;
+  contentType: string;
+  expiresInSec?: number;
+}) {
+  return getSignedUrl(
+    r2Client(),
+    new PutObjectCommand({
+      Bucket: requiredEnv("R2_BUCKET"),
+      Key: input.key,
+      ContentType: input.contentType,
+    }),
+    { expiresIn: input.expiresInSec ?? 300 },
+  );
 }
 
 export async function downloadObject(key: string): Promise<Buffer> {
