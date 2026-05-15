@@ -5,7 +5,8 @@ import { uploadObject } from "./storage";
 import { findPexelsVideo } from "./pexels";
 import { requiredEnv } from "@/lib/config";
 import { getBeatCount, splitCaptionIntoBeats } from "@/remotion/timeline";
-import type { AspectRatio, MediaInput, VideoProps, SceneInput } from "@/remotion/types";
+import { buildSceneMedia } from "./renderMedia";
+import type { AspectRatio, VideoProps, SceneInput } from "@/remotion/types";
 
 const FUNCTION_NAME = "remotion-render-4-0-460-mem3008mb-disk10240mb-900sec";
 const SERVE_URL = "https://remotionlambda-useast1-tlov7ow10m.s3.us-east-1.amazonaws.com/sites/youtubecreator/index.html";
@@ -33,30 +34,8 @@ export async function startRender(
   });
 
   const baseUrl = requiredEnv("R2_PUBLIC_BASE_URL").replace(/\/$/, "");
-  const reusableAssets = project.assets.filter((asset) => asset.type === "photo" || asset.type === "clip");
   let reusableAssetCursor = 0;
-
-  const assetToMediaInput = (asset: (typeof project.assets)[number]): MediaInput => ({
-    url: `${baseUrl}/${asset.r2Key}`,
-    type: asset.type === "clip" ? "video" : "image",
-  });
-
-  const nextReusableMedia = (usedAssetIds: Set<string>): MediaInput[] => {
-    if (reusableAssets.length === 0) return [];
-
-    const selected: MediaInput[] = [];
-    const maxItems = Math.min(3, reusableAssets.length);
-    let attempts = 0;
-    while (selected.length < maxItems && attempts < reusableAssets.length * 2) {
-      const asset = reusableAssets[reusableAssetCursor % reusableAssets.length];
-      reusableAssetCursor += 1;
-      attempts += 1;
-      if (usedAssetIds.has(asset.id)) continue;
-      usedAssetIds.add(asset.id);
-      selected.push(assetToMediaInput(asset));
-    }
-    return selected;
-  };
+  let clipAssetCursor = 0;
 
   // Generate TTS for scenes that don't have audio yet
   const sceneInputs: SceneInput[] = [];
@@ -80,28 +59,19 @@ export async function startRender(
       audioUrl = `${requiredEnv("R2_PUBLIC_BASE_URL").replace(/\/$/, "")}/${scene.ttsAudioR2Key}`;
     }
 
-    // Resolve media for this scene
-    const assetForScene = scene.assetId
-      ? project.assets.find((a) => a.id === scene.assetId)
-      : null;
+    const mediaPlan = buildSceneMedia({
+      assets: project.assets,
+      baseUrl,
+      sceneAssetId: scene.assetId,
+      assetCursor: reusableAssetCursor,
+      clipCursor: clipAssetCursor,
+    });
+    reusableAssetCursor = mediaPlan.nextAssetCursor;
+    clipAssetCursor = mediaPlan.nextClipCursor;
 
-    let imageUrl: string | null = null;
-    let videoUrl: string | null = null;
-    const mediaItems: MediaInput[] = [];
-    const usedAssetIds = new Set<string>();
-
-    if (assetForScene) {
-      const assetUrl = `${baseUrl}/${assetForScene.r2Key}`;
-      usedAssetIds.add(assetForScene.id);
-      mediaItems.push(assetToMediaInput(assetForScene));
-      if (assetForScene.type === "clip") {
-        videoUrl = assetUrl;
-      } else {
-        imageUrl = assetUrl;
-      }
-    }
-
-    mediaItems.push(...nextReusableMedia(usedAssetIds));
+    const { imageUrl } = mediaPlan;
+    let { videoUrl } = mediaPlan;
+    const { mediaItems } = mediaPlan;
 
     if (mediaItems.length === 0) {
       // No uploaded media — fetch Pexels stock footage and cache in R2

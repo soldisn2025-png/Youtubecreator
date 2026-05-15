@@ -11,6 +11,8 @@ const KB = [
   { s0: 1.18, s1: 1.0,  x0: -2, x1: 4,  y0: -4, y1: 0  },
 ];
 
+const ACCENTS = ["#f26a3d", "#37a987", "#f0b13e", "#5c8df6"];
+
 function MediaLayer({
   media,
   opacity,
@@ -78,6 +80,10 @@ export function SceneSlide({
 
   const captionOpacity = interpolate(beatFrame, [fps * 0.1, fps * 0.45], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   const captionY = interpolate(beatFrame, [fps * 0.1, fps * 0.45], [24, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const accent = ACCENTS[index % ACCENTS.length];
+  const progressWidth = interpolate(frame, [0, durationInFrames], [0, 100], { extrapolateRight: "clamp" });
+  const patternX = interpolate(frame, [0, durationInFrames], [-12, 12], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const labelOpacity = interpolate(frame, [0, fps * 0.25], [0, 1], { extrapolateRight: "clamp" });
 
   return (
     <AbsoluteFill style={{ background: "#111", overflow: "hidden" }}>
@@ -95,9 +101,57 @@ export function SceneSlide({
       {/* Gradient for caption readability */}
       <AbsoluteFill
         style={{
-          background: "linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.15) 40%, transparent 65%)",
+          background: "linear-gradient(to top, rgba(0,0,0,0.86) 0%, rgba(0,0,0,0.22) 42%, rgba(0,0,0,0.08) 70%, rgba(0,0,0,0.34) 100%)",
         }}
       />
+
+      <AbsoluteFill
+        style={{
+          opacity: 0.16,
+          mixBlendMode: "screen",
+          background: `repeating-linear-gradient(115deg, transparent 0 26px, ${accent} 27px 29px, transparent 30px 58px)`,
+          transform: `translateX(${patternX}%)`,
+        }}
+      />
+
+      <AbsoluteFill
+        style={{
+          padding: isVertical ? "70px 56px" : "40px 56px",
+          opacity: labelOpacity,
+        }}
+      >
+        <div
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 14,
+            width: "fit-content",
+            maxWidth: isVertical ? 880 : 1120,
+            color: "#fff",
+            fontFamily: "Arial, sans-serif",
+            fontSize: isVertical ? 25 : 21,
+            fontWeight: 800,
+            letterSpacing: 0,
+            textShadow: "0 2px 12px rgba(0,0,0,0.65)",
+          }}
+        >
+          <span
+            style={{
+              display: "inline-grid",
+              placeItems: "center",
+              width: isVertical ? 58 : 46,
+              height: isVertical ? 58 : 46,
+              background: accent,
+              color: "#111",
+            }}
+          >
+            {String(index + 1).padStart(2, "0")}
+          </span>
+          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {scene.sceneTitle}
+          </span>
+        </div>
+      </AbsoluteFill>
 
       {/* Caption */}
       <AbsoluteFill
@@ -110,20 +164,43 @@ export function SceneSlide({
           transform: `translateY(${captionY}px)`,
         }}
       >
-        <p
+        <div
           style={{
+            maxWidth: isVertical ? 920 : 1080,
+            borderLeft: `10px solid ${accent}`,
+            background: "rgba(10, 14, 12, 0.62)",
+            boxShadow: "0 24px 60px rgba(0,0,0,0.34)",
+            padding: isVertical ? "30px 34px" : "22px 28px",
+            backdropFilter: "blur(10px)",
+          }}
+        >
+          <p
+            style={{
             color: "#fff",
-            fontSize: isVertical ? 54 : 38,
-            fontWeight: 700,
+            fontSize: isVertical ? 56 : 40,
+            fontWeight: 800,
             fontFamily: "Arial, sans-serif",
             lineHeight: 1.22,
             textShadow: "0 2px 12px rgba(0,0,0,0.85)",
-            maxWidth: isVertical ? 920 : 1000,
+            margin: 0,
           }}
-        >
-          {caption}
-        </p>
+          >
+            {caption}
+          </p>
+        </div>
       </AbsoluteFill>
+
+      <div
+        style={{
+          position: "absolute",
+          left: 0,
+          bottom: 0,
+          width: `${progressWidth}%`,
+          height: isVertical ? 12 : 8,
+          background: accent,
+          boxShadow: `0 0 24px ${accent}`,
+        }}
+      />
 
       {scene.audioUrl && <Audio src={scene.audioUrl} />}
     </AbsoluteFill>
