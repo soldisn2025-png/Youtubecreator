@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { requireUserId } from "@/lib/server/auth";
 import ProjectEditor from "@/components/ProjectEditor";
 
+export const dynamic = "force-dynamic";
+
 export default async function ProjectPage({
   params,
 }: {

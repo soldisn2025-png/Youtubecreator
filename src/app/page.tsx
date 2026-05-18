@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { requireUserId } from "@/lib/server/auth";
 import NewProjectForm from "@/components/NewProjectForm";
 
+export const dynamic = "force-dynamic";
+
 const STATUS_LABELS: Record<string, string> = {
   draft: "Draft",
   generating: "Generating",
