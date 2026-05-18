@@ -144,7 +144,6 @@ export async function startRender(
     codec: "h264",
     imageFormat: "jpeg",
     framesPerLambda: lambdaOptions.framesPerLambda,
-    concurrency: lambdaOptions.concurrency,
     concurrencyPerLambda: lambdaOptions.concurrencyPerLambda,
     maxRetries: 2,
     privacy: "private",

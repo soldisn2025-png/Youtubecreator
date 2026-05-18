@@ -16,7 +16,6 @@ export function getRemotionLambdaOptions() {
     functionName: appConfig.remotionFunctionName,
     serveUrl: appConfig.remotionServeUrl,
     framesPerLambda: appConfig.remotionFramesPerLambda,
-    concurrency: appConfig.remotionConcurrency,
     concurrencyPerLambda: appConfig.remotionConcurrencyPerLambda,
     timeoutInMilliseconds: appConfig.remotionTimeoutMs,
   };
