@@ -33,7 +33,7 @@ export const appConfig = {
     "https://remotionlambda-useast1-tlov7ow10m.s3.us-east-1.amazonaws.com/sites/youtubecreator/index.html",
   ),
   remotionAwsRegion: optionalEnv("REMOTION_AWS_REGION", "us-east-1"),
-  remotionFramesPerLambda: optionalNumberEnv("REMOTION_FRAMES_PER_LAMBDA", 120, { min: 30, max: 600 }),
+  remotionFramesPerLambda: optionalNumberEnv("REMOTION_FRAMES_PER_LAMBDA", 1200, { min: 120, max: 3000 }),
   remotionConcurrencyPerLambda: optionalNumberEnv("REMOTION_CONCURRENCY_PER_LAMBDA", 1, { min: 1, max: 8 }),
   remotionTimeoutMs: optionalNumberEnv("REMOTION_TIMEOUT_MS", 840000, { min: 30000, max: 900000 }),
 };
