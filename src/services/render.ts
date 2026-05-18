@@ -3,21 +3,39 @@ import { prisma } from "@/lib/prisma";
 import { generateSpeech } from "./tts";
 import { uploadObject } from "./storage";
 import { findPexelsVideo } from "./pexels";
-import { requiredEnv } from "@/lib/config";
-import { getBeatCount, splitCaptionIntoBeats } from "@/remotion/timeline";
-import { buildSceneMedia } from "./renderMedia";
-import type { AspectRatio, VideoProps, SceneInput } from "@/remotion/types";
-
-const FUNCTION_NAME = "remotion-render-4-0-460-mem3008mb-disk10240mb-900sec";
-const SERVE_URL = "https://remotionlambda-useast1-tlov7ow10m.s3.us-east-1.amazonaws.com/sites/youtubecreator/index.html";
-const REGION = "us-east-1" as const;
+import { appConfig, requiredEnv } from "@/lib/config";
+import { buildRenderScenes, getRemotionLambdaOptions, type RenderSceneSource } from "./renderPlan";
+import type { AspectRatio, MediaInput, VideoProps, SceneInput } from "@/remotion/types";
+import type { AwsRegion } from "@remotion/lambda";
 
 function remotionAwsConfig() {
   return {
-    region: REGION,
+    region: appConfig.remotionAwsRegion as AwsRegion,
     accessKeyId: requiredEnv("REMOTION_AWS_ACCESS_KEY_ID"),
     secretAccessKey: requiredEnv("REMOTION_AWS_SECRET_ACCESS_KEY"),
   };
+}
+
+async function preflightRenderMediaUrls(scenes: SceneInput[]) {
+  const urls = new Set<string>();
+  for (const scene of scenes) {
+    if (scene.audioUrl) urls.add(scene.audioUrl);
+    for (const media of scene.mediaItems) urls.add(media.url);
+  }
+
+  await Promise.all(
+    Array.from(urls).map(async (url) => {
+      try {
+        const response = await fetch(url, { method: "HEAD" });
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        throw new Error(`Render media is not reachable: ${url} (${msg})`);
+      }
+    }),
+  );
 }
 
 export async function startRender(
@@ -34,11 +52,9 @@ export async function startRender(
   });
 
   const baseUrl = requiredEnv("R2_PUBLIC_BASE_URL").replace(/\/$/, "");
-  let reusableAssetCursor = 0;
-  let clipAssetCursor = 0;
 
   // Generate TTS for scenes that don't have audio yet
-  const sceneInputs: SceneInput[] = [];
+  const scenesForRender: RenderSceneSource[] = [];
   for (const scene of project.scenes) {
     let audioUrl: string | null = null;
 
@@ -59,51 +75,47 @@ export async function startRender(
       audioUrl = `${requiredEnv("R2_PUBLIC_BASE_URL").replace(/\/$/, "")}/${scene.ttsAudioR2Key}`;
     }
 
-    const mediaPlan = buildSceneMedia({
-      assets: project.assets,
-      baseUrl,
-      sceneAssetId: scene.assetId,
-      assetCursor: reusableAssetCursor,
-      clipCursor: clipAssetCursor,
+    scenesForRender.push({
+      sceneTitle: scene.sceneTitle,
+      captionText: scene.captionText,
+      assetId: scene.assetId,
+      ttsAudioDurationSec: scene.ttsAudioDurationSec ?? 8,
+      audioUrl,
     });
-    reusableAssetCursor = mediaPlan.nextAssetCursor;
-    clipAssetCursor = mediaPlan.nextClipCursor;
+  }
 
-    const { imageUrl } = mediaPlan;
-    let { videoUrl } = mediaPlan;
-    const { mediaItems } = mediaPlan;
+  const sceneInputs = buildRenderScenes({
+    scenes: scenesForRender,
+    assets: project.assets,
+    baseUrl,
+  });
 
-    if (mediaItems.length === 0) {
-      // No uploaded media — fetch Pexels stock footage and cache in R2
-      // (Lambda can't reliably reach Pexels CDN directly, so we proxy through R2)
-      const stockKey = `${userId}/${projectId}/stock/${scene.id}.mp4`;
-      const pexelsUrl = await findPexelsVideo(scene.sceneTitle);
+  for (let index = 0; index < sceneInputs.length; index += 1) {
+    const sceneInput = sceneInputs[index];
+    if (sceneInput.mediaItems.length === 0) {
+      // No uploaded media: fetch Pexels stock footage and cache in R2
+      // (Lambda can't reliably reach Pexels CDN directly, so we proxy through R2).
+      const projectScene = project.scenes[index];
+      const stockKey = `${userId}/${projectId}/stock/${projectScene.id}.mp4`;
+      const pexelsUrl = await findPexelsVideo(sceneInput.sceneTitle);
       if (pexelsUrl) {
         try {
           const resp = await fetch(pexelsUrl);
           if (resp.ok) {
             const buf = Buffer.from(await resp.arrayBuffer());
             await uploadObject({ key: stockKey, body: buf, contentType: "video/mp4" });
-            videoUrl = `${baseUrl}/${stockKey}`;
-            mediaItems.push({ url: videoUrl, type: "video" });
+            const media: MediaInput = { url: `${baseUrl}/${stockKey}`, type: "video" };
+            sceneInput.videoUrl = media.url;
+            sceneInput.mediaItems.push(media);
           }
         } catch {
-          // Pexels download failed — scene will use gradient background
+          // Pexels download failed: scene will use gradient background.
         }
       }
     }
-
-    sceneInputs.push({
-      sceneTitle: scene.sceneTitle,
-      captionText: scene.captionText,
-      beatCaptions: splitCaptionIntoBeats(scene.captionText, getBeatCount(scene.ttsAudioDurationSec ?? 8)),
-      mediaItems,
-      imageUrl,
-      videoUrl,
-      audioUrl,
-      durationSec: scene.ttsAudioDurationSec ?? 8,
-    });
   }
+
+  await preflightRenderMediaUrls(sceneInputs);
 
   const introAsset = project.introAssetId
     ? project.assets.find((a) => a.id === project.introAssetId)
@@ -122,19 +134,23 @@ export async function startRender(
   };
 
   const cfg = remotionAwsConfig();
+  const lambdaOptions = getRemotionLambdaOptions();
   const { renderId, bucketName } = await renderMediaOnLambda({
     region: cfg.region,
-    functionName: FUNCTION_NAME,
-    serveUrl: SERVE_URL,
+    functionName: lambdaOptions.functionName,
+    serveUrl: lambdaOptions.serveUrl,
     composition: "YoutubeVideo",
     inputProps: videoProps as unknown as Record<string, unknown>,
     codec: "h264",
     imageFormat: "jpeg",
+    framesPerLambda: lambdaOptions.framesPerLambda,
+    concurrency: lambdaOptions.concurrency,
+    concurrencyPerLambda: lambdaOptions.concurrencyPerLambda,
     maxRetries: 2,
     privacy: "private",
     downloadBehavior: { type: "download", fileName: "video.mp4" },
     outName: `${projectId}-output.mp4`,
-    timeoutInMilliseconds: 300000,
+    timeoutInMilliseconds: lambdaOptions.timeoutInMilliseconds,
   });
 
   // Create render job record
@@ -145,6 +161,10 @@ export async function startRender(
       remotionRenderId: renderId,
       remotionBucketName: bucketName,
     },
+  });
+  await prisma.project.update({
+    where: { id: projectId },
+    data: { status: "rendering" },
   });
 
   return renderJob.id;
@@ -169,7 +189,7 @@ export async function pollRender(renderJobId: string): Promise<{
   const progress = await getRenderProgress({
     renderId: renderJob.remotionRenderId!,
     bucketName: renderJob.remotionBucketName!,
-    functionName: FUNCTION_NAME,
+    functionName: appConfig.remotionFunctionName,
     region: cfg.region,
   });
 
