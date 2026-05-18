@@ -17,7 +17,10 @@ interface Props {
   scene: Scene;
   index: number;
   projectId: string;
+  assignedAssetType: string | null;
+  hasUploadedClips: boolean;
   onUpdated: (scene: Scene) => void;
+  onAssetUploaded: (type: string, assetId: string) => void;
 }
 
 const STATUS_PILL: Record<string, string> = {
@@ -47,7 +50,15 @@ function fmtDuration(sec: number | null) {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
-export default function SceneCard({ scene: initial, index, projectId, onUpdated }: Props) {
+export default function SceneCard({
+  scene: initial,
+  index,
+  projectId,
+  assignedAssetType,
+  hasUploadedClips,
+  onUpdated,
+  onAssetUploaded,
+}: Props) {
   const [scene, setScene] = useState(initial);
   const [editing, setEditing] = useState(false);
   const [narration, setNarration] = useState(initial.narrationText);
@@ -110,6 +121,7 @@ export default function SceneCard({ scene: initial, index, projectId, onUpdated 
         file,
         type: file.type.startsWith("video/") ? "clip" : "photo",
       });
+      onAssetUploaded(uploadData.asset.type, uploadData.asset.id);
 
       const patchRes = await fetch(`/api/projects/${projectId}/scenes/${scene.id}`, {
         method: "PATCH",
@@ -134,7 +146,15 @@ export default function SceneCard({ scene: initial, index, projectId, onUpdated 
   return (
     <div className={`scene-card${isPending ? " scene-card--pending" : ""}`}>
       <div className="scene-thumb">
-        {scene.assetId ? (
+        {scene.assetId && assignedAssetType === "clip" ? (
+          <video
+            src={`/api/assets/${scene.assetId}`}
+            className="h-full w-full object-cover"
+            muted
+            playsInline
+            preload="metadata"
+          />
+        ) : scene.assetId ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={`/api/assets/${scene.assetId}`}
@@ -185,6 +205,12 @@ export default function SceneCard({ scene: initial, index, projectId, onUpdated 
         {!editing && (
           <div className="scene-actions">
             {scene.ttsAudioDurationSec && <span>{fmtDuration(scene.ttsAudioDurationSec)}</span>}
+            {scene.assetId && (
+              <span>{assignedAssetType === "clip" ? "Assigned clip" : "Assigned photo"}</span>
+            )}
+            {assignedAssetType !== "clip" && hasUploadedClips && (
+              <span>Render includes uploaded clips</span>
+            )}
             <button onClick={() => setEditing(true)}>Edit words</button>
             <button onClick={() => fileRef.current?.click()} disabled={swapping}>
               {swapping ? "Swapping…" : "Swap media"}

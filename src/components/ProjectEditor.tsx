@@ -121,7 +121,9 @@ export default function ProjectEditor({ initialProject }: { initialProject: Proj
   function handleAssetUploaded(type: string, assetId: string) {
     setProject((p) => ({
       ...p,
-      assets: [...p.assets, { id: assetId, type }],
+      assets: p.assets.some((asset) => asset.id === assetId)
+        ? p.assets
+        : [...p.assets, { id: assetId, type }],
       introAssetId: type === "intro_image" ? assetId : p.introAssetId,
       outroAssetId: type === "outro_image" ? assetId : p.outroAssetId,
     }));
@@ -136,6 +138,7 @@ export default function ProjectEditor({ initialProject }: { initialProject: Proj
 
   const allScenesApproved =
     project.scenes.length > 0 && project.scenes.every((s) => s.status === "approved");
+  const hasUploadedClips = project.assets.some((asset) => asset.type === "clip");
 
   async function doExport() {
     setExportError("");
@@ -361,7 +364,12 @@ export default function ProjectEditor({ initialProject }: { initialProject: Proj
                       scene={scene}
                       index={i}
                       projectId={project.id}
+                      assignedAssetType={
+                        project.assets.find((asset) => asset.id === scene.assetId)?.type ?? null
+                      }
+                      hasUploadedClips={hasUploadedClips}
                       onUpdated={handleSceneUpdated}
+                      onAssetUploaded={handleAssetUploaded}
                     />
                   ))}
                 </div>

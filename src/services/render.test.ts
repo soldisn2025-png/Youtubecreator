@@ -73,9 +73,9 @@ describe("render scene assembly", () => {
   it("uses bounded Lambda defaults that split long videos into multiple chunks", () => {
     expect(getRemotionLambdaOptions()).toMatchObject({
       framesPerLambda: 120,
-      concurrency: 40,
       concurrencyPerLambda: 1,
       timeoutInMilliseconds: 840000,
     });
+    expect(getRemotionLambdaOptions()).not.toHaveProperty("concurrency");
   });
 });

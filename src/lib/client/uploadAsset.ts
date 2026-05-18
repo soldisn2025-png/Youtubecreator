@@ -6,7 +6,7 @@ export async function uploadProjectAsset(input: {
   projectId: string;
   file: File;
   type: AssetType;
-}): Promise<{ asset: { id: string } }> {
+}): Promise<{ asset: { id: string; type: AssetType } }> {
   if (input.file.size > DIRECT_UPLOAD_THRESHOLD_BYTES) {
     return uploadDirect(input);
   }
@@ -25,7 +25,7 @@ async function uploadDirect(input: {
   projectId: string;
   file: File;
   type: AssetType;
-}): Promise<{ asset: { id: string } }> {
+}): Promise<{ asset: { id: string; type: AssetType } }> {
   const presignRes = await fetch(`/api/projects/${input.projectId}/assets`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

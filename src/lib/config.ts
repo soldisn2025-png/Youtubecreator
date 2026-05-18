@@ -34,7 +34,6 @@ export const appConfig = {
   ),
   remotionAwsRegion: optionalEnv("REMOTION_AWS_REGION", "us-east-1"),
   remotionFramesPerLambda: optionalNumberEnv("REMOTION_FRAMES_PER_LAMBDA", 120, { min: 30, max: 600 }),
-  remotionConcurrency: optionalNumberEnv("REMOTION_CONCURRENCY", 40, { min: 1, max: 200 }),
   remotionConcurrencyPerLambda: optionalNumberEnv("REMOTION_CONCURRENCY_PER_LAMBDA", 1, { min: 1, max: 8 }),
   remotionTimeoutMs: optionalNumberEnv("REMOTION_TIMEOUT_MS", 840000, { min: 30000, max: 900000 }),
 };
